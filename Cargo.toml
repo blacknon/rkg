@@ -1,0 +1,18 @@
+[package]
+name = "rkg"
+version = "0.1.0"
+edition = "2021"
+description = "A one-liner oriented record/grid processor"
+readme = "README.md"
+license-file = "LICENSE"
+keywords = ["cli", "text", "record", "grid", "awk"]
+categories = ["command-line-utilities", "text-processing"]
+
+[[bin]]
+name = "rkg"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+regex = "1.11"
+anyhow = "1.0"
