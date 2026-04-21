@@ -3,12 +3,17 @@ rkg
 
 **`r`ecord** + **`k`nit** + **`g`rid**
 
-## About
+## Description
 
+`rkg` is a one-liner oriented record/grid processor for text reshaping work.
 
-`rkg` is the short crate/bin name for a one-liner oriented record/grid processor.
+It combines record-style operations for delimited text with grid-style operations for line-based patterns, so you can select, replace, reshape, transpose, rotate, and otherwise transform structured text from a compact command-line syntax.
 
-This version implements the current function-level DSL with:
+For shell-friendly one-liners, the DSL should prefer a small punctuation set built
+around `.`, `:`, `,`, `;`, and `=` so that common expressions stay readable in
+bash/zsh without leaning too heavily on `"` or `()`.
+
+### Features
 
 - `r.` / `rec.` for record mode
 - `d.` / `grid.` for grid mode
@@ -16,67 +21,85 @@ This version implements the current function-level DSL with:
 - statement reset with `;`
 - AWK-like separators: `fs`, `rs`, `ofs`, `ors`
 - `-F` / `--field-separator` for AWK-like initial field separator override
+- `-R` / `--record-separator`, `-O` / `--output-field-separator`, `-N` / `--output-record-separator` for initial separator overrides
+- field selection, replace, explode, implode, groupby, reshape, flatten
+- transpose, rotate, and ray/pattern mark operations for grid input
 
-## Build
+## Install
+
+### Cargo Install
+
+```bash
+cargo install rkg
+```
+
+### Build From Source
 
 ```bash
 cargo build --release
 ```
+
+## Usage
+
+### Command
+
+```bash
+$ rkg --help
+Record/grid DSL processor
+```
+
+### Quick Start
 
 ```bash
 printf 'A,10;tokyo\nB:20;osaka\n' |
   cargo run -- -F '[,:;]' 'r.p(1,2,3).ofs("|")'
 ```
 
-## DSL shape
+Shorthand:
+
+```bash
+printf 'A,10;tokyo\nB:20;osaka\n' |
+  cargo run -- -F '[,:;]' 'r.p:1,2,3.ofs=|'
+```
+
+awk:
+
+```bash
+printf 'A,10;tokyo\nB:20;osaka\n' |
+  awk -F'[,:;]' '{print $1 "|" $2 "|" $3}'
+```
+
+### DSL Shape
 
 ```text
 r.fs(",").x(2,";").g(1,s(2)).ofs(",");
 d.t().rt("r").m("K","rook","*")
 ```
 
+Shorthand forms are also supported for shell-friendly one-liners:
+
+```text
+mode.method:arg1,arg2.setting=value;mode.method:arg
+d.t.rt:r
+```
+
+- `method(...)` is the classic call form
+- `method:arg1,arg2` is shorthand for `method(arg1,arg2)`
+- `method=value` is shorthand for single-argument config-style calls like `ofs("|")`
+- bare `method` is shorthand for zero-argument calls like `t()`
 - `;` resets evaluation to the original stdin for the next statement
 - only the last statement is printed by default
 - `--print-all` prints all statement results separated by `---`
 - `-F` sets the initial record-mode `fs` before the DSL runs, and accepts regex patterns
+- `-R`, `-O`, and `-N` set initial `rs`, `ofs`, and `ors` before the DSL runs
+- if `EXPR` is omitted, `rkg` defaults to record-mode passthrough with the initial CLI separators applied
+- when the shell would treat a character specially, quote the whole DSL as one argument
 
-## Record functions
+### Quick examples
 
-- `fs(re)` input field separator regex, AWK-like (`\s+` by default)
-- `rs(sep)` input record separator (`\n` by default)
-- `ofs(sep)` output field separator (` ` by default)
-- `ors(sep)` output record separator (`\n` by default)
-- `p(...)` / `select(...)` select fields, e.g. `p(1,"3:")`
-- `sb(re, rep)` / `replace(re, rep)` regex replace per cell
-- `n(start_or_AZ)` / `enum(...)` prepend numbering or `A-Z` cycle labels
-- `x(col, sep)` / `explode(...)` split one field into multiple rows
-- `i(key_col, val_col, join_sep?)` / `implode(...)` collapse rows by key
-- `g(key_col, agg...)` / `groupby(...)` aggregate by key
-- `sh(mode, ...)` / `reshape(...)` where mode is `w2l` or `l2w`
-- `f(template?)` / `flatten(...)` flatten records; optional template like `"{name}:{age}"`
+#### Record functions
 
-## Aggregators
-
-- `s(col)` / `sum(col)`
-- `c()` / `count()`
-- `mn(col)` / `min(col)`
-- `mx(col)` / `max(col)`
-- `a(col)` / `avg(col)`
-
-## Grid functions
-
-- `fs(sep)` optional cell separator; default is character grid
-- `rs(sep)` / `ofs(sep)` / `ors(sep)`
-- `t()` / `transpose()`
-- `rt("r"|"l"|"180")` / `rotate(...)`
-- `m(from, ray, put)` marks along a ray (`rook`, `bishop`, `queen`, `8`)
-- `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
-
-## Examples
-
-### Record functions
-
-#### `-F re` / `--field-separator re`
+##### `-F re` / `--field-separator re`
 
 Sets the initial record-mode field separator from the CLI before any DSL method runs.
 
@@ -101,7 +124,21 @@ A|10|tokyo
 B|20|osaka
 ```
 
-#### `fs(re)`
+Shorthand:
+
+```bash
+printf 'A,10;tokyo\nB:20;osaka\n' |
+  rkg -F '[,:;]' 'r.p:1,2,3.ofs=|'
+```
+
+awk:
+
+```bash
+printf 'A,10;tokyo\nB:20;osaka\n' |
+  awk -F'[,:;]' '{OFS="|"}{print $1,$2,$3}'
+```
+
+##### `fs(re)`
 
 Splits each record with the given regex instead of the default whitespace separator.
 
@@ -119,6 +156,20 @@ printf 'A,10\nB,20\n' |
   rkg 'r.fs(",")'
 ```
 
+Shorthand:
+
+```bash
+printf 'A,10\nB,20\n' |
+  rkg 'r.fs=,'
+```
+
+awk:
+
+```bash
+printf 'A,10\nB,20\n' |
+  awk -F',' '{print $1, $2}'
+```
+
 Output:
 
 ```text
@@ -126,7 +177,7 @@ A 10
 B 20
 ```
 
-#### `rs(sep)`
+##### `rs(sep)`
 
 Treats the given separator as the boundary between input records.
 
@@ -143,12 +194,72 @@ printf 'A 10|B 20|' |
   rkg 'r.rs("|")'
 ```
 
+Shorthand:
+
+```bash
+printf 'A 10|B 20|' |
+  rkg 'r.rs=|'
+```
+
+awk:
+
+```bash
+printf 'A 10|B 20|' |
+  awk 'BEGIN{RS="\\|"} NF{print $0}'
+```
+
 Output:
 
 ```text
 A 10
 B 20
 ```
+
+## Reference
+
+### Record functions
+
+- `fs(re)` input field separator regex, AWK-like (`\s+` by default)
+- `rs(sep)` input record separator (`\n` by default)
+- `ofs(sep)` output field separator (` ` by default)
+- `ors(sep)` output record separator (`\n` by default)
+- `p(...)` / `select(...)` select fields, e.g. `p(1,"3:")`
+- `sb(re, rep)` / `replace(re, rep)` regex replace per cell
+- `n(start_or_AZ)` / `enum(...)` prepend numbering or `A-Z` cycle labels
+- `x(col, sep)` / `explode(...)` split one field into multiple rows
+- `i(key_col, val_col, join_sep?)` / `implode(...)` collapse rows by key
+- `g(key_col, agg...)` / `groupby(...)` aggregate by key
+- `sh(mode, ...)` / `reshape(...)` where mode is `w2l` or `l2w`
+- `f(template?)` / `flatten(...)` flatten records; optional template like `"{name}:{age}"`
+
+### Aggregators
+
+- `s(col)` / `sum(col)`
+- `c()` / `count()`
+- `mn(col)` / `min(col)`
+- `mx(col)` / `max(col)`
+- `a(col)` / `avg(col)`
+
+### Grid functions
+
+- `fs(sep)` optional cell separator; default is character grid
+- `rs(sep)` / `ofs(sep)` / `ors(sep)`
+- `t()` / `transpose()`
+- `rt("r"|"l"|"180")` / `rotate(...)`
+- `m(from, ray, put)` marks along a ray (`rook`, `bishop`, `queen`, `8`)
+- `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
+
+### Shorthand syntax
+
+- `r.p:1,3.ofs=|` is equivalent to `r.p(1,3).ofs("|")`
+- `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
+- `d.t.rt:r` is equivalent to `d.t().rt("r")`
+- shorthand is most useful for simple one-liners; regular `()` calls remain available for anything that needs clearer quoting
+- the `awk` / `sed` snippets below are example-specific equivalents, not drop-in general replacements for the full DSL
+
+## Examples
+
+### Record functions
 
 #### `ofs(sep)`
 
@@ -166,6 +277,28 @@ Command:
 ```bash
 printf 'A 10\nB 20\n' |
   rkg 'r.ofs(",")'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg 'r.ofs=,'
+```
+
+Opion only:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg -O,
+```
+
+
+awk:
+
+```bash
+printf 'A 10\nB 20\n' |
+  awk '{$1=$1; OFS=","; print}'
 ```
 
 Output:
@@ -193,6 +326,20 @@ printf 'A 10\nB 20\n' |
   rkg 'r.ors("|")'
 ```
 
+Shorthand:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg 'r.ors=|'
+```
+
+awk:
+
+```bash
+printf 'A 10\nB 20\n' |
+  awk 'BEGIN{ORS="|"} {print $0}'
+```
+
 Output:
 
 ```text
@@ -214,7 +361,21 @@ Command:
 
 ```bash
 printf 'A 10 tokyo\nB 20 osaka\n' |
-  rkg 'r.p(1,"3:")'
+  rkg 'r.p(1,3)'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10 tokyo\nB 20 osaka\n' |
+  rkg 'r.p:1,3'
+```
+
+awk:
+
+```bash
+printf 'A 10 tokyo\nB 20 osaka\n' |
+  awk '{print $1, $3}'
 ```
 
 Output:
@@ -239,7 +400,21 @@ Command:
 
 ```bash
 printf 'A-10\nB-20\n' |
-  rkg 'r.fs("-").sb("[0-9]","X").ofs("-")'
+  rkg 'r.sb("[0-9]","X")'
+```
+
+Shorthand:
+
+```bash
+printf 'A-10\nB-20\n' |
+  rkg 'r.sb:[0-9],X'
+```
+
+sed:
+
+```bash
+printf 'A-10\nB-20\n' |
+  sed -E 's/[0-9]/X/g'
 ```
 
 Output:
@@ -267,6 +442,20 @@ printf 'A 10\nB 20\n' |
   rkg 'r.n(1)'
 ```
 
+Shorthand:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg 'r.n:1'
+```
+
+awk:
+
+```bash
+printf 'A 10\nB 20\n' |
+  awk '{print NR, $0}'
+```
+
 Output:
 
 ```text
@@ -289,6 +478,20 @@ Command:
 ```bash
 printf 'A 10\nB 20\nC 30\n' |
   rkg 'r.n("A-Z")'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nB 20\nC 30\n' |
+  rkg 'r.n:A-Z'
+```
+
+awk:
+
+```bash
+printf 'A 10\nB 20\nC 30\n' |
+  awk '{printf "%c %s\n", 64 + NR, $0}'
 ```
 
 Output:
@@ -314,7 +517,21 @@ Command:
 
 ```bash
 printf 'A,10;20;30\nB,7;8\n' |
-  rkg 'r.fs(",").x(2,";").ofs(",")'
+  rkg -F, -O, 'r.x(2,";")'
+```
+
+Shorthand:
+
+```bash
+printf 'A,10;20;30\nB,7;8\n' |
+  rkg -F, -O, 'r.x:2,";"'
+```
+
+awk:
+
+```bash
+printf 'A,10;20;30\nB,7;8\n' |
+  awk -F',' '{n=split($2, a, ";"); for (i=1; i<=n; i++) print $1 "," a[i]}'
 ```
 
 Output:
@@ -336,21 +553,41 @@ Input:
 ```text
 A 10
 A 20
+A 30
 B 7
+B 8
+B 9
+C 100
+C 200
 ```
 
 Command:
 
 ```bash
-printf 'A 10\nA 20\nB 7\n' |
+printf 'A 10\nA 20\nA 30\nB 7\nB 8\nB 9\nC 100\nC 200\n' |
   rkg 'r.i(1,2,",")'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nA 30\nB 7\nB 8\nB 9\nC 100\nC 200\n' |
+  rkg 'r.i:1,2,","'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nA 30\nB 7\nB 8\nB 9\nC 100\nC 200\n' |
+  awk '!seen[$1]++{keys[++n]=$1} {vals[$1]=vals[$1] ? vals[$1] "," $2 : $2} END {for (i=1; i<=n; i++) print keys[i], vals[keys[i]]}'
 ```
 
 Output:
 
 ```text
-A 10,20
-B 7
+A 10,20,30
+B 7,8,9
+C 100,200
 ```
 
 #### `g(key_col, agg...)` / `groupby(...)`
@@ -368,7 +605,21 @@ Command:
 
 ```bash
 printf 'A,10;20;30\nB,7;8\n' |
-  rkg 'r.fs(",").x(2,";").g(1,s(2)).ofs(",")'
+  rkg -F, -O, 'r.x(2,";").g(1,s(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A,10;20;30\nB,7;8\n' |
+  rkg  -F, -O, 'r.x:2,";".g:1,s:2'
+```
+
+awk:
+
+```bash
+printf 'A,10;20;30\nB,7;8\n' |
+  awk -F'[,;]' '{if (!seen[$1]++) keys[++n]=$1; for (i=2; i<=NF; i++) sum[$1]+=$i} END {for (i=1; i<=n; i++) print keys[i] "," sum[keys[i]]}'
 ```
 
 Output:
@@ -395,6 +646,20 @@ Command:
 ```bash
 printf 'name math eng\nA 80 90\nB 70 85\n' |
   rkg 'r.sh("w2l",2)'
+```
+
+Shorthand:
+
+```bash
+printf 'name math eng\nA 80 90\nB 70 85\n' |
+  rkg 'r.sh:w2l,2'
+```
+
+awk:
+
+```bash
+printf 'name math eng\nA 80 90\nB 70 85\n' |
+  awk 'NR==1{for (i=2; i<=NF; i++) h[i]=$i; next} {for (i=2; i<=NF; i++) print $1, h[i], $i}'
 ```
 
 Output:
@@ -426,6 +691,20 @@ printf 'A math 80\nA eng 90\nB math 70\nB eng 85\n' |
   rkg 'r.sh("l2w",2,3)'
 ```
 
+Shorthand:
+
+```bash
+printf 'A math 80\nA eng 90\nB math 70\nB eng 85\n' |
+  rkg 'r.sh:l2w,2,3'
+```
+
+awk:
+
+```bash
+printf 'A math 80\nA eng 90\nB math 70\nB eng 85\n' |
+  gawk '{if (!seen_col[$2]++) cols[++m]=$2; if (!seen_row[$1]++) rows[++n]=$1; data[$1,$2]=$3} END {asort(cols); printf "key"; for (i=1; i<=m; i++) printf " %s", cols[i]; print ""; for (r=1; r<=n; r++) {printf "%s", rows[r]; for (i=1; i<=m; i++) printf " %s", data[rows[r], cols[i]]; print ""}}'
+```
+
 Output:
 
 ```text
@@ -444,13 +723,29 @@ Input:
 name age
 alice 20
 bob 30
+carol 25
+dave 41
 ```
 
 Command:
 
 ```bash
-printf 'name age\nalice 20\nbob 30\n' |
+printf 'name age\nalice 20\nbob 30\ncarol 25\ndave 41\n' |
   rkg 'r.f("{name}:{age}")'
+```
+
+Shorthand:
+
+```bash
+printf 'name age\nalice 20\nbob 30\ncarol 25\ndave 41\n' |
+  rkg 'r.f:"{name}:{age}"'
+```
+
+awk:
+
+```bash
+printf 'name age\nalice 20\nbob 30\ncarol 25\ndave 41\n' |
+  awk 'NR>1 {print $1 ":" $2}'
 ```
 
 Output:
@@ -458,6 +753,8 @@ Output:
 ```text
 alice:20
 bob:30
+carol:25
+dave:41
 ```
 
 ### Aggregators
@@ -479,6 +776,20 @@ Command:
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   rkg 'r.g(1,s(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  rkg 'r.g:1,s:2'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  awk '{c[$1]+=$2} END {for (k in c) print k, c[k]}' | sort
 ```
 
 Output:
@@ -507,6 +818,20 @@ printf 'A 10\nA 20\nB 7\n' |
   rkg 'r.g(1,c())'
 ```
 
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  rkg 'r.g:1,c'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  awk '{print $1}' | uniq -c | awk '{print $2, $1}'
+```
+
 Output:
 
 ```text
@@ -523,14 +848,32 @@ Input:
 ```text
 A 10
 A 20
+A 15
 B 7
+B 12
+C 3
+C 9
 ```
 
 Command:
 
 ```bash
-printf 'A 10\nA 20\nB 7\n' |
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g(1,mn(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  rkg 'r.g:1,mn:2'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  sort -k1,1 -k2,2n | awk '!a[$1]++'
 ```
 
 Output:
@@ -538,6 +881,7 @@ Output:
 ```text
 A 10
 B 7
+C 3
 ```
 
 #### `mx(col)` / `max(col)`
@@ -549,21 +893,40 @@ Input:
 ```text
 A 10
 A 20
+A 15
 B 7
+B 12
+C 3
+C 9
 ```
 
 Command:
 
 ```bash
-printf 'A 10\nA 20\nB 7\n' |
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g(1,mx(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  rkg 'r.g:1,mx:2'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  sort -k1,1 -k2,2nr | awk '!a[$1]++'
 ```
 
 Output:
 
 ```text
 A 20
-B 7
+B 12
+C 9
 ```
 
 #### `a(col)` / `avg(col)`
@@ -575,21 +938,41 @@ Input:
 ```text
 A 10
 A 20
+A 15
 B 7
+B 12
+C 3
+C 9
 ```
 
 Command:
 
 ```bash
-printf 'A 10\nA 20\nB 7\n' |
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g(1,a(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  rkg 'r.g:1,a:2'
+```
+
+awk:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  awk '{sum[$1]+=$2; cnt[$1]++} END {for (k in sum) print k, sum[k] / cnt[k]}' |
+  sort
 ```
 
 Output:
 
 ```text
 A 15
-B 7
+B 9.5
+C 6
 ```
 
 ### Grid functions
@@ -610,6 +993,20 @@ Command:
 ```bash
 printf 'a,b,c\nd,e,f\n' |
   rkg 'd.fs(",").ofs("|")'
+```
+
+Shorthand:
+
+```bash
+printf 'a,b,c\nd,e,f\n' |
+  rkg 'd.fs=,.ofs=|'
+```
+
+awk:
+
+```bash
+printf 'a,b,c\nd,e,f\n' |
+  awk -F',' '{print $1 "|" $2 "|" $3}'
 ```
 
 Output:
@@ -634,6 +1031,20 @@ Command:
 ```bash
 printf 'abc|def|ghi|' |
   rkg 'd.rs("|")'
+```
+
+Shorthand:
+
+```bash
+printf 'abc|def|ghi|' |
+  rkg 'd.rs=|'
+```
+
+awk:
+
+```bash
+printf 'abc|def|ghi|' |
+  awk 'BEGIN{RS="\\|"} NF {print $0}'
 ```
 
 Output:
@@ -662,6 +1073,20 @@ printf 'abc\ndef\n' |
   rkg 'd.ofs("|")'
 ```
 
+Shorthand:
+
+```bash
+printf 'abc\ndef\n' |
+  rkg 'd.ofs=|'
+```
+
+sed:
+
+```bash
+printf 'abc\ndef\n' |
+  sed 's/./&|/g; s/|$//'
+```
+
 Output:
 
 ```text
@@ -685,6 +1110,20 @@ Command:
 ```bash
 printf 'abc\ndef\n' |
   rkg 'd.ors("---\n")'
+```
+
+Shorthand:
+
+```bash
+printf 'abc\ndef\n' |
+  rkg 'd.ors="---\n"'
+```
+
+awk:
+
+```bash
+printf 'abc\ndef\n' |
+  awk 'BEGIN{ORS="---\n"} {print $0}'
 ```
 
 Output:
@@ -711,6 +1150,20 @@ Command:
 ```bash
 printf 'abc\ndef\nghi\n' |
   rkg 'd.t()'
+```
+
+Shorthand:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'd.t'
+```
+
+awk:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  awk '{for (i=1; i<=length($0); i++) col[i]=col[i] substr($0, i, 1)} END {for (i=1; i in col; i++) print col[i]}'
 ```
 
 Output:
@@ -740,6 +1193,20 @@ printf 'abc\ndef\nghi\n' |
   rkg 'd.rt("r")'
 ```
 
+Shorthand:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'd.rt:r'
+```
+
+awk:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  awk '{rows[NR]=$0; if (length($0)>w) w=length($0)} END {for (i=1; i<=w; i++) {out=""; for (j=NR; j>=1; j--) out = out substr(rows[j], i, 1); print out}}'
+```
+
 Output:
 
 ```text
@@ -763,6 +1230,20 @@ Command:
 ```bash
 printf 'abc\ndef\nghi\n' |
   rkg 'd.rt("180")'
+```
+
+Shorthand:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'd.rt=180'
+```
+
+awk:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  awk '{rows[NR]=$0} END {for (i=NR; i>=1; i--) {out=""; for (j=length(rows[i]); j>=1; j--) out = out substr(rows[i], j, 1); print out}}'
 ```
 
 Output:
@@ -792,6 +1273,20 @@ printf '.....\n..K..\n.....\n' |
   rkg 'd.m("K","rook","*")'
 ```
 
+Shorthand:
+
+```bash
+printf '.....\n..K..\n.....\n' |
+  rkg 'd.m:K,rook,*'
+```
+
+awk:
+
+```bash
+printf '.....\n..K..\n.....\n' |
+  awk '{rows[NR]=$0; if ((p=index($0,"K"))>0) {ky=NR; kx=p}} END {for (y=1; y<=NR; y++) {out=""; for (x=1; x<=length(rows[y]); x++) {c=substr(rows[y], x, 1); if ((y==ky || x==kx) && !(y==ky && x==kx) && c==".") c="*"; out=out c} print out}}'
+```
+
 Output:
 
 ```text
@@ -819,6 +1314,20 @@ printf '.....\n.XOOX\n.....\n' |
   rkg 'd.m("X","O","X","*")'
 ```
 
+Shorthand:
+
+```bash
+printf '.....\n.XOOX\n.....\n' |
+  rkg 'd.m:X,O,X,*'
+```
+
+sed:
+
+```bash
+printf '.....\n.XOOX\n.....\n' |
+  sed 's/XOOX/X**X/'
+```
+
 Output:
 
 ```text
@@ -843,6 +1352,19 @@ Command:
 ```bash
 printf 'A 10,20\nB 7,8\n' |
   rkg --print-all 'r.x(2,",").g(1,s(2)); r.n(1)'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10,20\nB 7,8\n' |
+  rkg --print-all 'r.x:2,",".g:1,s:2; r.n:1'
+```
+
+awk:
+
+```bash
+{ printf 'A 10,20\nB 7,8\n' | awk '{split($2, a, ","); print $1, a[1] + a[2]}'; printf '%s\n' '---'; printf 'A 10,20\nB 7,8\n' | awk '{print NR, $0}'; }
 ```
 
 Output:
