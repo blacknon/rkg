@@ -1664,6 +1664,68 @@ Output:
 
 </details>
 
+#### `rev(mode, pad(value)?)` / `rv(mode, pad(value)?)`
+
+Reverses the grid horizontally, vertically, or both.
+Use `mode` as `h`, `v`, or `hv`.
+If rows have different widths, `pad(value)` can make them rectangular before reversing.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+abc
+def
+ghi
+```
+
+Command:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'g.rev("h")'
+```
+
+Shorthand:
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'g.rv:h'
+```
+
+Output:
+
+```text
+cba
+fed
+ihg
+```
+
+</details>
+
+Pad example:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.rev("h",pad("."))'
+```
+
+Shorthand:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.rv:h,pad:"."'
+```
+
+Output:
+
+```text
+.ba
+edc
+```
+
 #### `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(origin, dir, values..., wrap(mode)?, skip(n)?)`
 
 Writes values along a direction or fill-mode from a coordinate or picked point.
