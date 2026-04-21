@@ -18,10 +18,6 @@ use crate::ast::{GridConfig, Pipeline, RecConfig, Receiver, Statement};
 #[command(name = "rkg")]
 #[command(about = "Record/grid DSL processor")]
 struct Cli {
-    /// Print every statement result separated by ---
-    #[arg(long)]
-    print_all: bool,
-
     /// Input field separator regex for record mode, like awk -F
     #[arg(short = 'F', long = "field-separator")]
     field_separator: Option<String>,
@@ -47,61 +43,80 @@ fn main() -> Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    let stmts = if let Some(expr) = &cli.expr {
+    let stmts = parse_or_default_program(cli.expr.as_deref())?;
+    let rec_cfg = build_rec_config(&cli);
+    let grid_cfg = build_grid_config(&cli);
+
+    let mut current = input.clone();
+    let mut outputs = Vec::new();
+    for pipeline in &stmts {
+        current =
+            engine::eval_pipeline_with_configs(pipeline, &current, &input, &rec_cfg, &grid_cfg)?;
+        outputs.push(current.clone());
+    }
+
+    for (i, out) in outputs.iter().enumerate() {
+        if i > 0 {
+            println!("---");
+        }
+        print!("{}", out);
+    }
+
+    Ok(())
+}
+
+fn parse_or_default_program(expr: Option<&str>) -> Result<Vec<Pipeline>> {
+    if let Some(expr) = expr {
         let stmts = parser::parse_program(expr)?;
         if stmts.is_empty() {
             bail!("empty program");
         }
-        stmts
+        Ok(stmts)
     } else {
-        vec![Pipeline {
-            stages: vec![Statement {
-                receiver: Receiver::Rec,
-                calls: Vec::new(),
-            }],
-        }]
-    };
+        Ok(vec![default_pipeline()])
+    }
+}
 
-    let mut rec_cfg = RecConfig::default();
-    if let Some(field_separator) = cli.field_separator {
-        rec_cfg.fs = field_separator;
+fn default_pipeline() -> Pipeline {
+    Pipeline {
+        stages: vec![Statement {
+            source: crate::ast::Source::Current,
+            address: None,
+            receiver: Receiver::Rec,
+            calls: Vec::new(),
+        }],
+    }
+}
+
+/// Record mode has its own input field separator, plus the shared row/output
+/// separators that are also available in grid mode.
+fn build_rec_config(cli: &Cli) -> RecConfig {
+    let mut cfg = RecConfig::default();
+    if let Some(field_separator) = &cli.field_separator {
+        cfg.fs = field_separator.clone();
     }
     if let Some(record_separator) = &cli.record_separator {
-        rec_cfg.rs = record_separator.clone();
+        cfg.rs = record_separator.clone();
     }
     if let Some(output_field_separator) = &cli.output_field_separator {
-        rec_cfg.ofs = output_field_separator.clone();
+        cfg.ofs = output_field_separator.clone();
     }
     if let Some(output_record_separator) = &cli.output_record_separator {
-        rec_cfg.ors = output_record_separator.clone();
+        cfg.ors = output_record_separator.clone();
     }
+    cfg
+}
 
-    let mut grid_cfg = GridConfig::default();
+fn build_grid_config(cli: &Cli) -> GridConfig {
+    let mut cfg = GridConfig::default();
     if let Some(record_separator) = &cli.record_separator {
-        grid_cfg.rs = record_separator.clone();
+        cfg.rs = record_separator.clone();
     }
     if let Some(output_field_separator) = &cli.output_field_separator {
-        grid_cfg.ofs = output_field_separator.clone();
+        cfg.ofs = output_field_separator.clone();
     }
     if let Some(output_record_separator) = &cli.output_record_separator {
-        grid_cfg.ors = output_record_separator.clone();
+        cfg.ors = output_record_separator.clone();
     }
-
-    let outputs = stmts
-        .iter()
-        .map(|pipeline| engine::eval_pipeline_with_configs(pipeline, &input, &rec_cfg, &grid_cfg))
-        .collect::<Result<Vec<_>>>()?;
-
-    if cli.print_all {
-        for (i, out) in outputs.iter().enumerate() {
-            if i > 0 {
-                println!("---");
-            }
-            print!("{}", out);
-        }
-    } else if let Some(last) = outputs.last() {
-        print!("{}", last);
-    }
-
-    Ok(())
+    cfg
 }

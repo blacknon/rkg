@@ -11,23 +11,116 @@ One-liner DSL for shell-gei, record processing, and grid-based text transforms.
 
 <br clear="left" />
 
-## Description
+## What It Is
 
 `rkg` is a one-liner oriented record/grid processor for text reshaping work.
 
 It combines record-style operations for delimited text with grid-style operations for line-based patterns, so you can select, replace, reshape, transpose, rotate, and otherwise transform structured text from a compact command-line syntax.
 
-For shell-friendly one-liners, the DSL should prefer a small punctuation set built
-around `.`, `:`, `,`, `;`, and `=` so that common expressions stay readable in
-bash/zsh without leaning too heavily on `"` or `()`.
+For shell-friendly one-liners, the DSL stays compact by leaning on a small punctuation set built around `.`, `:`, `,`, `;`, and `=`.
+
+## When To Use It
+
+Use `rkg` when the job is bigger than a quick `cut`/`sed` tweak, but you still want a short shell pipeline instead of a full script.
+
+- use `record` mode for row/field reshaping, grouping, exploding, flattening, and AWK-like separator work
+- use `grid` mode for line art, transposition, rotation, padding, directional writes, and pattern marking
+- use it when you want to mix both styles in one pipeline, such as `record -> grid` or `grid -> record`
+
+Good fits:
+
+- “split one field, regroup, and reformat”
+- “transpose or rotate line-based text”
+- “mark paths or patterns in an ASCII grid”
+- “keep the command short enough to stay readable in a shell history”
+
+## Mode Guide
+
+### Record Mode
+
+`r.` / `rec.` treats input as records split into fields.
+
+Good for:
+
+- selecting columns
+- changing separators
+- exploding and imploding rows
+- grouping with aggregators like `sum`, `count`, or `median`
+- reshaping tabular text
+
+### Grid Mode
+
+`g.` / `grid.` treats input as a text figure or a cell matrix.
+
+Good for:
+
+- transpose / rotate / reverse
+- padding and alignment
+- reading or writing by coordinates
+- line placement and ray-based marking
+- ASCII-art and board-like transforms
+
+## Learn In 3 Examples
+
+### 1. Select And Reformat Fields
+
+```bash
+printf 'A,10;tokyo\nB:20;osaka\n' |
+  rkg -F '[,:;]' 'r.p:1,2,3.ofs=|'
+```
+
+Output:
+
+```text
+A|10|tokyo
+B|20|osaka
+```
+
+### 2. Group And Sum
+
+```bash
+printf 'A,10;20;30\nB,7;8\n' |
+  rkg -F, -O, 'r.x:2,";".g:1,s:2'
+```
+
+Output:
+
+```text
+A,60
+B,15
+```
+
+### 3. Rotate A Text Grid
+
+```bash
+printf 'abc\ndef\nghi\n' |
+  rkg 'g.t.rt:r'
+```
+
+Output:
+
+```text
+cba
+fed
+ihg
+```
+
+## Start Here
+
+- Install: [GitHub Releases binaries](#github-releases-binaries), [`cargo install --locked`](#cargo-install), or [build from source](#build-from-source)
+- Learn the syntax: [DSL spec](docs/spec.md)
+- Keep commands handy: [cheat sheet](docs/cheatsheet.md)
+- Download released builds and source archives: [GitHub Releases](https://github.com/blacknon/rkg/releases)
 
 ### Features
 
 - `r.` / `rec.` for record mode
 - `g.` / `grid.` for grid mode
+- optional source prefix such as `stdin.` or `prev.`
 - method chaining with `.`
 - pipeline chaining with `|`
-- statement reset with `;`
+- statement separation with `;`
+- optional pre-addressing before `r.` for record filtering
 - AWK-like separators: `fs`, `rs`, `ofs`, `ors`
 - `-F` / `--field-separator` for AWK-like initial field separator override
 - `-R` / `--record-separator`, `-O` / `--output-field-separator`, `-N` / `--output-record-separator` for initial separator overrides
@@ -36,10 +129,48 @@ bash/zsh without leaning too heavily on `"` or `()`.
 
 ## Install
 
+Choose one:
+
+- use GitHub Releases if you want the packaged binary for Linux x86_64, macOS Apple Silicon, or Windows x86_64
+- use `cargo install --locked` if you already use Rust tooling and want a quick local install
+- build from source if you want to work from the repository directly
+
+### GitHub Releases Binaries
+
+Prebuilt archives are published on [GitHub Releases](https://github.com/blacknon/rkg/releases).
+
+Current release artifacts are built for:
+
+- Linux x86_64
+- macOS aarch64
+- Windows x86_64
+
+Each release also includes a matching SHA-256 checksum file.
+
+Basic flow:
+
+1. Download the archive for your platform.
+2. Download the matching `.sha256` file.
+3. Verify the archive before extracting it.
+
+Examples:
+
+```bash
+shasum -a 256 -c rkg-<version>-<target>.tar.gz.sha256
+sha256sum -c rkg-<version>-<target>.tar.gz.sha256
+```
+
+On Windows PowerShell, compare the archive hash with the `.sha256` file contents:
+
+```powershell
+Get-FileHash .\rkg-<version>-x86_64-pc-windows-msvc.zip -Algorithm SHA256
+Get-Content .\rkg-<version>-x86_64-pc-windows-msvc.zip.sha256
+```
+
 ### Cargo Install
 
 ```bash
-cargo install rkg
+cargo install --locked rkg
 ```
 
 ### Build From Source
@@ -49,6 +180,14 @@ cargo build --release
 ```
 
 ## Usage
+
+### Specification
+
+The DSL reference for the current v0.3.x behavior is in [docs/spec.md](docs/spec.md).
+
+### Cheat Sheet
+
+For a compact command reference, see [docs/cheatsheet.md](docs/cheatsheet.md).
 
 ### Command
 
@@ -82,6 +221,10 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
 
 ```text
 r.fs(",").x(2,";").g(1,s(2)).ofs(",");
+stdin.2r.n:1
+prev.1,5r.ch.ci("X").n(1)
+2r.n:1
+/tokyo/r.p:1,2
 g.t().rt("r").m(p("K"),"orth","*")
 ```
 
@@ -94,13 +237,14 @@ g.t.rt:r
 ```
 
 - `|` pipes the previous stage output into the next stage when the right side starts with `r.`/`g.`
+- `stdin.` can appear before `r.` / `g.` to restart from the original stdin, for example `stdin.r.n:1` or `stdin.1,9r.ch.ci("あ")`
+- `prev.` can appear before `r.` / `g.` to explicitly reuse the previous statement output, for example `prev.r.n:1`
+- `address + r.` is record-only pre-addressing; it filters input records before `r.` runs, such as `2r.p:1`, `1,3r.p:1`, or `/tokyo/r.p:1,2`. `g.` / `grid.` does not support this because grid mode treats the whole input as one figure.
 - `method(...)` is the classic call form
 - `method:arg1,arg2` is shorthand for `method(arg1,arg2)`
 - `method=value` is shorthand for single-argument config-style calls like `ofs("|")`
 - bare `method` is shorthand for zero-argument calls like `t()`
-- `;` resets evaluation to the original stdin for the next statement group
-- only the last statement is printed by default
-- `--print-all` prints all statement results separated by `---`
+- `;` separates statements; each statement runs after the previous one, and all statement results are printed separated by `---`
 - `-F` sets the initial record-mode `fs` before the DSL runs, and accepts regex patterns
 - `-R`, `-O`, and `-N` set initial `rs`, `ofs`, and `ors` before the DSL runs
 - if `EXPR` is omitted, `rkg` defaults to record-mode passthrough with the initial CLI separators applied
@@ -254,34 +398,34 @@ Treats the given separator as the boundary between input records.
 Input:
 
 ```text
-A 10|B 20|
+A 10|B 20
 ```
 
 Command:
 
 ```bash
-printf 'A 10|B 20|' |
+printf 'A 10|B 20' |
   rkg 'r.rs("|")'
 ```
 
 Shorthand:
 
 ```bash
-printf 'A 10|B 20|' |
+printf 'A 10|B 20' |
   rkg 'r.rs=|'
 ```
 
 Option only:
 
 ```bash
-printf 'A 10|B 20|' |
+printf 'A 10|B 20' |
   rkg -R'|'
 ```
 
 Existing commands:
 
 ```bash
-printf 'A 10|B 20|' |
+printf 'A 10|B 20' |
   awk 'BEGIN{RS="\\|"} NF{print $0}'
 ```
 
@@ -298,10 +442,18 @@ B 20
 
 ### Record functions
 
+- pre-addressing is available before `r.` / `rec.`:
+- `2r...` selects record 2
+- `1,3r...` selects records 1 through 3
+- `2,$r...` selects record 2 through the last record
+- `/re/r...` selects records matching regex `re`
+- `1,/re/r...` selects from record 1 through the first later record matching `re`
 - `fs(re)` input field separator regex, AWK-like (`\s+` by default)
 - `rs(sep)` input record separator (`\n` by default)
 - `ofs(sep)` output field separator (` ` by default)
 - `ors(sep)` output record separator (`\n` by default)
+- `chars()` / `ch()` split each record into single-character fields
+- `countif(re)` / `ci(re)` count matching fields per record
 - `p(...)` / `select(...)` select fields, e.g. `p(1,"3:")`
 - `sb(re, rep)` / `replace(re, rep)` regex replace per cell
 - `n(start_or_AZ)` / `enum(...)` prepend numbering or `A-Z` cycle labels
@@ -324,24 +476,34 @@ B 20
 
 - `fs(sep)` optional cell separator; default is character grid
 - `rs(sep)` / `ofs(sep)` / `ors(sep)`
-- `get(x, y)` / `get(p(...))` returns a 1-cell grid from a 1-based coordinate or picked point
-- `set(x, y, value)` / `set(p(...), value)` overwrites one cell at a 1-based coordinate or picked point
+- `get(x, y)` / `get(p(...))` / `get(pt(x, y))` returns a 1-cell grid from a 1-based coordinate or picked point
+- `set(x, y, value)` / `set(p(...), value)` / `set(pt(x, y), value)` overwrites one cell at a 1-based coordinate or picked point
 - `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(...)` writes values along a direction or fill-mode from a coordinate or picked point
+- `pad(n, value?)` / `pad(top, bottom, left, right, value?)` / `pd(...)` adds outer padding around the whole grid
+- `align(mode, pad(value)?)` / `al(...)` aligns each row to the widest row using `left`, `center`, or `right`
 - `rev(mode, pad(value)?)` / `rv(...)` reverses the grid horizontally, vertically, or both; `pad(...)` makes ragged rows rectangular first
-- `t()` / `transpose()`
-- `rt("r"|"l"|"180")` / `rotate(...)`
-- `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`); `from` may be a literal or `pick(value[, n])` / `p(value[, n])`
+- `t(pad(value)?)` / `transpose(pad(value)?)`
+- `rt("r"|"l"|"180", pad(value)?)` / `rotate(...)`
+- `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`); `from` may be a literal, `pick(value[, n])` / `p(value[, n])`, or `point(x, y)` / `pt(x, y)`
 - `m(origin, "line", dir, values..., wrap(mode)?, skip(n)?)` can reuse mark as a line-placement mode from one or more origins
 - `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
 
 ### Shorthand syntax
 
+- `2r.n:1` is equivalent to selecting record 2 first, then running `r.n(1)`
+- `/tokyo/r.p:1,2` filters records by regex before running `r.p(1,2)`
+- `r.ch.ci("あ")` is equivalent to `r.chars().countif("あ")`
 - `r.p:1,3.ofs=|` is equivalent to `r.p(1,3).ofs("|")`
 - `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
 - `g.get:3,2` is equivalent to `g.get(3,2)`
 - `g.set:3,2,X` is equivalent to `g.set(3,2,"X")`
+- `g.pd:1,"."` is equivalent to `g.pad(1,".")`
+- `g.pd:1,0,2,1,"."` is equivalent to `g.pad(1,0,2,1,".")`
 - `g.rv:h` is equivalent to `g.rev("h")`
+- `g.al:c,pad:"."` is equivalent to `g.align("center",pad("."))`
 - `g.rv:h,pad:"."` is equivalent to `g.rev("h",pad("."))`
+- `g.t:pad:"."` is equivalent to `g.t(pad("."))`
+- `g.rt:r,pad:"."` is equivalent to `g.rt("r",pad("."))`
 - `g.ln:2,2,r,A,B,C` is equivalent to `g.line(2,2,"r","A","B","C")`
 - `g.ln:4,1,r,A,B,C,D,wrap:row` is equivalent to `g.line(4,1,"r","A","B","C","D",wrap("row"))`
 - `g.ln:1,1,fur,A,B,C,D,E,F,G,H,I,skip:1` is equivalent to `g.line(1,1,"fur","A","B","C","D","E","F","G","H","I",skip(1))`
@@ -496,6 +658,84 @@ Output:
 ```text
 A tokyo
 B osaka
+```
+
+</details>
+
+#### `chars()` / `ch()`
+
+Splits each record into one field per character. This is especially useful after piping `grid` output into `record` mode for per-line counting.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+abca
+zzzz
+```
+
+Command:
+
+```bash
+printf 'abca\nzzzz\n' |
+  rkg 'r.ch'
+```
+
+Output:
+
+```text
+a b c a
+z z z z
+```
+
+</details>
+
+#### `countif(re)` / `ci(re)`
+
+Counts how many fields in each record match the given regex.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+a b a
+c a d
+```
+
+Command:
+
+```bash
+printf 'a b a\nc a d\n' |
+  rkg 'r.ci("a")'
+```
+
+Grid to record pipeline:
+
+```bash
+seq -f 'printf " %.s" {1..5}; echo' 5 |
+  bash |
+  rkg 'g.m(pt(3,3),"orth","X") | r.ch.ci("X")'
+```
+
+Output:
+
+```text
+2
+1
+```
+
+Pipeline output:
+
+```text
+1
+1
+4
+1
+1
 ```
 
 </details>
@@ -1251,14 +1491,14 @@ Command:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg -O'|' 'g.fs(",")'
+  rkg 'g.fs(",").ofs("|")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg -O'|' 'g.fs=,'
+  rkg 'g.fs=,.ofs=|'
 ```
 
 Existing commands:
@@ -1287,34 +1527,34 @@ Treats the given separator as the boundary between grid rows.
 Input:
 
 ```text
-abc|def|ghi|
+abc|def|ghi
 ```
 
 Command:
 
 ```bash
-printf 'abc|def|ghi|' |
+printf 'abc|def|ghi' |
   rkg 'g.rs("|")'
 ```
 
 Shorthand:
 
 ```bash
-printf 'abc|def|ghi|' |
+printf 'abc|def|ghi' |
   rkg 'g.rs=|'
 ```
 
 Option only:
 
 ```bash
-printf 'abc|def|ghi|' |
+printf 'abc|def|ghi' |
   rkg -R'|'
 ```
 
 Existing commands:
 
 ```bash
-printf 'abc|def|ghi|' |
+printf 'abc|def|ghi' |
   awk 'BEGIN{RS="\\|"} NF {print $0}'
 ```
 
@@ -1324,6 +1564,7 @@ Output:
 abc
 def
 ghi
+
 ```
 
 </details>
@@ -1430,9 +1671,9 @@ def---
 
 </details>
 
-#### `t()` / `transpose()`
+#### `t(pad(value)?)` / `transpose(pad(value)?)`
 
-Swaps rows and columns in the grid.
+Swaps rows and columns in the grid. If rows have different widths, `pad(value)` can make them rectangular before transposing.
 
 <details>
 <summary>Example</summary>
@@ -1459,6 +1700,20 @@ printf 'abc\ndef\nghi\n' |
   rkg 'g.t'
 ```
 
+Pad example:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.t(pad("."))'
+```
+
+Pad shorthand:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.t:pad:"."'
+```
+
 Existing commands:
 
 ```bash
@@ -1474,11 +1729,19 @@ beh
 cfi
 ```
 
+Pad output:
+
+```text
+ac
+bd
+.e
+```
+
 </details>
 
-#### `rt("r"|"l"|"180")` / `rotate(...)`
+#### `rt("r"|"l"|"180", pad(value)?)` / `rotate(...)`
 
-Rotates the grid 90 degrees clockwise.
+Rotates the grid. If rows have different widths, `pad(value)` can make them rectangular before rotating.
 
 <details>
 <summary>Example</summary>
@@ -1505,6 +1768,20 @@ printf 'abc\ndef\nghi\n' |
   rkg 'g.rt:r'
 ```
 
+Pad example:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.rt("r",pad("."))'
+```
+
+Pad shorthand:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.rt:r,pad:"."'
+```
+
 Existing commands:
 
 ```bash
@@ -1518,6 +1795,14 @@ Output:
 gda
 heb
 ifc
+```
+
+Pad output:
+
+```text
+ca
+db
+e.
 ```
 
 Rotates the grid by 180 degrees.
@@ -1564,7 +1849,7 @@ cba
 #### `m(from, ray, put)` / `mark(from, ray, put)`
 
 Marks all reachable cells along the specified ray directions from the source cell.
-`from` can be a literal cell value or `pick(value[, n])` / `p(value[, n])`, which selects the nth matching cell in top-to-bottom, left-to-right order.
+`from` can be a literal cell value, `pick(value[, n])` / `p(value[, n])`, or `point(x, y)` / `pt(x, y)`. `pick(...)` selects the nth matching cell in top-to-bottom, left-to-right order.
 
 <details>
 <summary>Example</summary>
@@ -1584,6 +1869,13 @@ Command:
 ```bash
 printf '.......\n.......\n...K...\n.......\n.......\n' |
   rkg 'g.m(p("K"),"orth","*")'
+```
+
+Coordinate origin:
+
+```bash
+printf '.....\n..K..\n.....\n' |
+  rkg 'g.m(pt(3,2),"orth","*")'
 ```
 
 Nth match:
@@ -1672,6 +1964,95 @@ Output:
 
 </details>
 
+#### `pad(n, value?)` / `pad(top, bottom, left, right, value?)` / `pd(...)`
+
+Adds outer padding around the whole grid. If rows have different widths, they are first padded to a rectangle using the same value. If `value` is omitted, spaces are used.
+
+This is different from the nested `pad(value)` option used by methods like `align`, `rev`, `t`, and `rt`.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+ab
+cde
+```
+
+Command:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.pad(1,".")'
+```
+
+Per-side shorthand:
+
+```bash
+printf 'ab\ncde\n' |
+  rkg 'g.pd:1,0,2,1,"."'
+```
+
+Output:
+
+```text
+.....
+.ab..
+.cde.
+.....
+```
+
+Per-side output:
+
+```text
+......
+..ab..
+..cde.
+```
+
+</details>
+
+#### `align(mode, pad(value)?)` / `al(mode, pad(value)?)`
+
+Aligns each row to the widest row. `mode` may be `left` / `l`, `center` / `c`, or `right` / `r`.
+If `pad(value)` is omitted, spaces are used.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+a
+bbb
+cc
+```
+
+Command:
+
+```bash
+printf 'a\nbbb\ncc\n' |
+  rkg 'g.align("center",pad("."))'
+```
+
+Shorthand:
+
+```bash
+printf 'a\nbbb\ncc\n' |
+  rkg 'g.al:c,pad:"."'
+```
+
+Output:
+
+```text
+.a.
+bbb
+cc.
+```
+
+</details>
+
 #### `rev(mode, pad(value)?)` / `rv(mode, pad(value)?)`
 
 Reverses the grid horizontally, vertically, or both.
@@ -1736,7 +2117,7 @@ edc
 
 #### `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(origin, dir, values..., wrap(mode)?, skip(n)?)`
 
-Writes values along a direction or fill-mode from a coordinate or picked point.
+Writes values along a direction or fill-mode from a coordinate or picked point. `origin` may be raw coordinates like `line(2,2,...)`, or a point expression such as `p("K")` or `pt(2,2)`.
 One-way directions are `right` / `r`, `left` / `l`, `up` / `u`, `down` / `d`, `ur`, `ul`, `dr`, `dl`.
 Centered directions are `horiz` / `h`, `vert` / `v`, `diag_dr` / `xr`, and `diag_dl` / `xl`, and they require an odd number of values so the middle value lands on the origin.
 Fill modes are `fill_ur` / `fur` and `fill_ul` / `ful`.
@@ -1940,14 +2321,13 @@ Output:
 デて　　　　　　　　$
 し　　　　　　　　　$
 　　　　　　　　　　$
-
 ```
 
 </details>
 
 ### Multiple statements
 
-Runs each statement against the original stdin, so later statements do not receive earlier output.
+Shows how to restart from the original stdin in a later statement by using `stdin.`.
 
 <details>
 <summary>Example</summary>
@@ -1963,14 +2343,14 @@ Command:
 
 ```bash
 printf 'A 10,20\nB 7,8\n' |
-  rkg --print-all 'r.x(2,",").g(1,s(2)); r.n(1)'
+  rkg 'r.x(2,",").g(1,s(2)); stdin.r.n(1)'
 ```
 
 Shorthand:
 
 ```bash
 printf 'A 10,20\nB 7,8\n' |
-  rkg --print-all 'r.x:2,",".g:1,s:2; r.n:1'
+  rkg 'r.x:2,",".g:1,s:2; stdin.r.n:1'
 ```
 
 Existing commands:
@@ -1995,5 +2375,6 @@ B 15
 
 - `fs` is treated as a regex for record mode, similar to AWK `FS`
 - CSV quoting is **not** implemented; this prototype is regex-split based
-- `;` resets to the original stdin; it does **not** pass the previous statement result to the next one
+- `;` separates statements; later statements receive the previous statement result by default
+- use `stdin.` when you want a later statement to restart from the original stdin instead
 - grid mode defaults to character cells; `g.fs(",")` switches to separated cells

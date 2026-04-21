@@ -6,6 +6,8 @@ pub enum Receiver {
 
 #[derive(Debug, Clone)]
 pub struct Statement {
+    pub source: Source,
+    pub address: Option<AddressRange>,
     pub receiver: Receiver,
     pub calls: Vec<Call>,
 }
@@ -87,4 +89,25 @@ pub enum Agg {
     Max(usize),
     Avg(usize),
     Median(usize),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Address {
+    Line(usize),
+    Last,
+    Regex(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddressRange {
+    pub start: Address,
+    pub end: Option<Address>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Source {
+    Current,
+    Stdin,
+    Prev,
+    Named(String),
 }

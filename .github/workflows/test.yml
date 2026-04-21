@@ -12,6 +12,7 @@ env:
 
 jobs:
   test:
+    # Linux stays the full test runner for the main suite.
     name: cargo test
     runs-on: ubuntu-latest
     steps:
@@ -21,3 +22,24 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked
+
+  smoke:
+    # Smoke the same non-Linux platforms we publish binaries for.
+    name: smoke (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-aarch64
+            os: macos-14
+          - name: windows-x86_64
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run portable smoke checks
+        shell: bash
+        run: bash scripts/ci-smoke.sh
