@@ -1774,6 +1774,14 @@ printf '.....\n.....\n.....\n' |
   rkg 'g.ln:2,2,r,A,B,C'
 ```
 
+Output:
+
+```text
+.....
+.ABC.
+.....
+```
+
 Wrapped shorthand:
 
 ```bash
@@ -1784,8 +1792,8 @@ printf '.....\n.....\n.....\n' |
 Output:
 
 ```text
-.....
-.ABC.
+...AB
+CD...
 .....
 ```
 
