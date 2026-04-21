@@ -171,6 +171,168 @@ fn mark_can_use_p_alias_for_nth_pick() {
 }
 
 #[test]
+fn get_can_read_by_coordinates() {
+    assert_run(r#"g.get(3,2)"#, "abc\ndef\nghi\n", "f\n");
+}
+
+#[test]
+fn get_can_read_by_pick_origin() {
+    assert_run(r#"g.get(p("K"))"#, ".....\n..K..\n.....\n", "K\n");
+}
+
+#[test]
+fn set_can_write_by_coordinates() {
+    assert_run(r#"g.set(3,2,"X")"#, "abc\ndef\nghi\n", "abc\ndeX\nghi\n");
+}
+
+#[test]
+fn set_can_write_by_pick_origin() {
+    assert_run(r#"g.set(p("K"),".")"#, ".....\n..K..\n.....\n", ".....\n.....\n.....\n");
+}
+
+#[test]
+fn reverse_can_flip_horizontal() {
+    assert_run(r#"g.rev("h")"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
+}
+
+#[test]
+fn reverse_can_flip_vertical() {
+    assert_run(r#"g.rev("v")"#, "abc\ndef\nghi\n", "ghi\ndef\nabc\n");
+}
+
+#[test]
+fn reverse_can_pad_before_horizontal_flip() {
+    assert_run(r#"g.rev("h",pad("."))"#, "ab\ncde\n", ".ba\nedc\n");
+}
+
+#[test]
+fn reverse_can_flip_both_axes() {
+    assert_run(r#"g.rev("hv")"#, "abc\ndef\n", "fed\ncba\n");
+}
+
+#[test]
+fn line_can_write_right_from_coordinates() {
+    assert_run(
+        r#"g.line(2,2,"right","A","B","C")"#,
+        ".....\n.....\n.....\n",
+        ".....\n.ABC.\n.....\n",
+    );
+}
+
+#[test]
+fn line_can_write_vertical_centered_from_pick() {
+    assert_run(
+        r#"g.line(p("K"),"vert","A","B","C")"#,
+        ".....\n.....\n..K..\n.....\n.....\n",
+        ".....\n..A..\n..B..\n..C..\n.....\n",
+    );
+}
+
+#[test]
+fn line_can_write_horizontal_centered() {
+    assert_run(
+        r#"g.line(3,2,"horiz","A","B","C")"#,
+        ".....\n.....\n.....\n",
+        ".....\n.ABC.\n.....\n",
+    );
+}
+
+#[test]
+fn line_can_write_diagonal_centered() {
+    assert_run(
+        r#"g.line(3,3,"diag_dr","A","B","C")"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        ".....\n.A...\n..B..\n...C.\n.....\n",
+    );
+}
+
+#[test]
+fn line_direction_aliases_work() {
+    assert_run(
+        r#"g.line(2,2,"r","A","B","C")"#,
+        ".....\n.....\n.....\n",
+        ".....\n.ABC.\n.....\n",
+    );
+    assert_run(
+        r#"g.line(3,3,"v","A","B","C")"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        ".....\n..A..\n..B..\n..C..\n.....\n",
+    );
+}
+
+#[test]
+fn line_can_wrap_rows() {
+    assert_run(
+        r#"g.line(4,1,"r","A","B","C","D",wrap("row"))"#,
+        ".....\n.....\n.....\n",
+        "...AB\nCD...\n.....\n",
+    );
+}
+
+#[test]
+fn line_can_wrap_columns() {
+    assert_run(
+        r#"g.line(2,3,"d","1","2","3","4",wrap("col"))"#,
+        "....\n....\n....\n",
+        "..2.\n..3.\n.14.\n",
+    );
+}
+
+#[test]
+fn line_can_wrap_diagonal() {
+    assert_run(
+        r#"g.line(3,3,"dr","A","B","C","D",wrap("diag_dr"))"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        ".D...\n.....\n..A..\n...B.\n....C\n",
+    );
+}
+
+#[test]
+fn line_can_fill_upper_right_diagonals() {
+    assert_run(
+        r#"g.line(1,1,"fur","A","B","C","D","E","F","G","H","I",skip(1))"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        ".BEI.\nADH..\nCG...\nF....\n.....\n",
+    );
+}
+
+#[test]
+fn line_fill_mode_can_shift_start_with_skip() {
+    assert_run(
+        r#"g.line(1,1,"fur","A","B","C","D","E","F","G",skip(3))"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        "..CG.\n.BF..\nAE...\nD....\n.....\n",
+    );
+}
+
+#[test]
+fn mark_can_run_line_mode() {
+    assert_run(
+        r#"g.m(p("K"),"line","r","A","B","C")"#,
+        ".....\n..K..\n.....\n",
+        ".....\n..ABC\n.....\n",
+    );
+}
+
+#[test]
+fn mark_can_run_wrapped_line_mode() {
+    assert_run(
+        r#"g.m(p("K"),"line","r","A","B","C","D",wrap("row"))"#,
+        ".....\n...K.\n.....\n",
+        ".....\n...AB\nCD...\n",
+    );
+}
+
+#[test]
+fn mark_can_run_fill_line_mode() {
+    assert_run(
+        r#"g.m(p("K"),"line","fur","A","B","C","D",skip(1))"#,
+        "K....\n.....\n.....\n.....\n",
+        "KB...\nAD...\nC....\n.....\n",
+    );
+}
+
+#[test]
 fn field_separator_option_accepts_regex() {
     let out = run_with_fs(
         r#"r.p(1,2,3).ofs("|")"#,
@@ -244,6 +406,47 @@ fn shorthand_outer_call_can_wrap_nested_paren_call() {
         "g.m:p(\"K\",2),\"diag\",\"*\"",
         "K....\n.....\n..K..\n.....\n....K\n",
         "*...*\n.*.*.\n..K..\n.*.*.\n*...*\n",
+    );
+}
+
+#[test]
+fn shorthand_get_and_set_work() {
+    assert_run(r#"g.get:3,2"#, "abc\ndef\nghi\n", "f\n");
+    assert_run(r#"g.set:3,2,X"#, "abc\ndef\nghi\n", "abc\ndeX\nghi\n");
+    assert_run(r#"g.rv:h"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
+    assert_run(r#"g.rv:h,pad:".""#, "ab\ncde\n", ".ba\nedc\n");
+}
+
+#[test]
+fn shorthand_line_works() {
+    assert_run(
+        r#"g.ln:2,2,r,A,B,C"#,
+        ".....\n.....\n.....\n",
+        ".....\n.ABC.\n.....\n",
+    );
+    assert_run(
+        r#"g.ln:4,1,r,A,B,C,D,wrap:row"#,
+        ".....\n.....\n.....\n",
+        "...AB\nCD...\n.....\n",
+    );
+    assert_run(
+        r#"g.ln:1,1,fur,A,B,C,D,E,F,G,H,I,skip:1"#,
+        ".....\n.....\n.....\n.....\n.....\n",
+        ".BEI.\nADH..\nCG...\nF....\n.....\n",
+    );
+}
+
+#[test]
+fn shorthand_mark_line_mode_works() {
+    assert_run(
+        r#"g.m:p("K"),line,r,A,B"#,
+        ".....\n..K..\n.....\n",
+        ".....\n..AB.\n.....\n",
+    );
+    assert_run(
+        r#"g.m:p("K"),line,r,A,B,C,D,wrap:row"#,
+        ".....\n...K.\n.....\n",
+        ".....\n...AB\nCD...\n",
     );
 }
 

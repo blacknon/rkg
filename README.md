@@ -316,17 +316,29 @@ B 20
 
 - `fs(sep)` optional cell separator; default is character grid
 - `rs(sep)` / `ofs(sep)` / `ors(sep)`
+- `get(x, y)` / `get(p(...))` returns a 1-cell grid from a 1-based coordinate or picked point
+- `set(x, y, value)` / `set(p(...), value)` overwrites one cell at a 1-based coordinate or picked point
+- `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(...)` writes values along a direction or fill-mode from a coordinate or picked point
+- `rev(mode, pad(value)?)` / `rv(...)` reverses the grid horizontally, vertically, or both; `pad(...)` makes ragged rows rectangular first
 - `t()` / `transpose()`
 - `rt("r"|"l"|"180")` / `rotate(...)`
 - `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`); `from` may be a literal or `pick(value[, n])` / `p(value[, n])`
+- `m(origin, "line", dir, values..., wrap(mode)?, skip(n)?)` can reuse mark as a line-placement mode from one or more origins
 - `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
 
 ### Shorthand syntax
 
 - `r.p:1,3.ofs=|` is equivalent to `r.p(1,3).ofs("|")`
 - `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
+- `g.get:3,2` is equivalent to `g.get(3,2)`
+- `g.set:3,2,X` is equivalent to `g.set(3,2,"X")`
+- `g.rv:h` is equivalent to `g.rev("h")`
+- `g.rv:h,pad:"."` is equivalent to `g.rev("h",pad("."))`
+- `g.ln:2,2,r,A,B,C` is equivalent to `g.line(2,2,"r","A","B","C")`
+- `g.ln:4,1,r,A,B,C,D,wrap:row` is equivalent to `g.line(4,1,"r","A","B","C","D",wrap("row"))`
+- `g.ln:1,1,fur,A,B,C,D,E,F,G,H,I,skip:1` is equivalent to `g.line(1,1,"fur","A","B","C","D","E","F","G","H","I",skip(1))`
+- `g.m:p("K"),line,r,A,B` is equivalent to `g.m(p("K"),"line","r","A","B")`
 - `g.m:p("K",2),"diag","*"` is equivalent to `g.m(p("K",2),"diag","*")`
-- `g.t.rt:r` is equivalent to `g.t().rt("r")`
 - shorthand is most useful for simple one-liners; regular `()` calls remain available for anything that needs clearer quoting
 - the `Existing commands` snippets below are example-specific equivalents built from common shell tools, not drop-in general replacements for the full DSL
 
@@ -929,7 +941,6 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{c[$1]+=$2} END {for (k in c) print k, c[k]}' | sort
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nB 7\n' |
@@ -942,6 +953,8 @@ Output:
 A 30
 B 7
 ```
+
+</details>
 
 #### `c()` / `count()`
 
@@ -977,7 +990,6 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{print $1}' | uniq -c | awk '{print $2, $1}'
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nB 7\n' |
@@ -990,6 +1002,8 @@ Output:
 A 2
 B 1
 ```
+
+</details>
 
 #### `mn(col)` / `min(col)`
 
@@ -1029,7 +1043,6 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2n | awk '!a[$1]++'
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
@@ -1043,6 +1056,8 @@ A 10
 B 7
 C 3
 ```
+
+</details>
 
 #### `mx(col)` / `max(col)`
 
@@ -1082,7 +1097,6 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2nr | awk '!a[$1]++'
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
@@ -1096,6 +1110,8 @@ A 20
 B 12
 C 9
 ```
+
+</details>
 
 #### `a(col)` / `avg(col)`
 
@@ -1136,7 +1152,6 @@ Existing commands:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   awk '{sum[$1]+=$2; cnt[$1]++} END {for (k in sum) print k, sum[k] / cnt[k]}' |
   sort
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
@@ -1150,6 +1165,8 @@ A 15
 B 9.5
 C 6
 ```
+
+</details>
 
 #### `med(col)` / `median(col)`
 
@@ -1190,7 +1207,6 @@ Existing commands:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   awk '{a[$1][++n[$1]]=$2} END {for (k in a) {asort(a[k]); print k, n[k]%2 ? a[k][(n[k]+1)/2] : (a[k][n[k]/2]+a[k][n[k]/2+1])/2}}' |
   sort
-</details>
 
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
@@ -1204,6 +1220,8 @@ A 15
 B 9.5
 C 6
 ```
+
+</details>
 
 ### Grid functions
 
@@ -1642,6 +1660,209 @@ Output:
 .X***X.
 .......
 .......
+```
+
+</details>
+
+#### `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(origin, dir, values..., wrap(mode)?, skip(n)?)`
+
+Writes values along a direction or fill-mode from a coordinate or picked point.
+One-way directions are `right` / `r`, `left` / `l`, `up` / `u`, `down` / `d`, `ur`, `ul`, `dr`, `dl`.
+Centered directions are `horiz` / `h`, `vert` / `v`, `diag_dr` / `xr`, and `diag_dl` / `xl`, and they require an odd number of values so the middle value lands on the origin.
+Fill modes are `fill_ur` / `fur` and `fill_ul` / `ful`.
+`wrap(mode)` is optional and only works for one-way directions:
+
+- `r` / `l` with `wrap("row")`
+- `u` / `d` with `wrap("col")`
+- `dr` / `ul` with `wrap("diag_dr")`
+- `dl` / `ur` with `wrap("diag_dl")`
+
+`skip(n)` is optional and only works for fill modes. It skips the first `n` cells in the fill traversal before writing values.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```text
+.....
+.....
+.....
+```
+
+Command:
+
+```bash
+printf '.....\n.....\n.....\n' |
+  rkg 'g.line(2,2,"r","A","B","C")'
+```
+
+Shorthand:
+
+```bash
+printf '.....\n.....\n.....\n' |
+  rkg 'g.ln:2,2,r,A,B,C'
+```
+
+Wrapped shorthand:
+
+```bash
+printf '.....\n.....\n.....\n' |
+  rkg 'g.ln:4,1,r,A,B,C,D,wrap:row'
+```
+
+Output:
+
+```text
+.....
+.ABC.
+.....
+```
+
+Diagonal example:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.line(2,2,"dr","C","O","D","E")'
+```
+
+Output:
+
+```text
+.....
+.C...
+..O..
+...D.
+....E
+```
+
+Diagonal shorthand:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:2,2,dr,C,O,D,E'
+```
+
+Diagonal wrap example:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:3,3,dr,A,B,C,D,wrap:diag_dr'
+```
+
+Output:
+
+```text
+.D...
+.....
+..A..
+...B.
+....C
+```
+
+Top-edge diagonal example:
+Coordinates are 1-based, so the top-left corner is `(1,1)`.
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:1,1,dr,H,E,L,L,O'
+```
+
+Output:
+
+```text
+H....
+.E...
+..L..
+...L.
+....O
+```
+
+Second-row diagonal example:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:1,2,dr,S,L,A,N'
+```
+
+Output:
+
+```text
+.....
+S....
+.L...
+..A..
+...N.
+```
+
+Fill-mode example:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:1,1,fur,A,B,C,D,E,F,G,H,I,skip:1'
+```
+
+Existing commands:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  awk 'BEGIN{split("A B C D E F G H I", vals, " ")} {rows[NR]=$0} END {skip=1; n=0; for (d=0; d<10; d++) {for (x=0; x<=d; x++) {y=d-x; if (x<5 && y<5) cells[++n]=(x+1) "," (y+1)}} for (i=skip+1; i<=n && i-skip<=length(vals); i++) {split(cells[i], p, ","); x=p[1]; y=p[2]; row=rows[y]; rows[y]=substr(row,1,x-1) vals[i-skip] substr(row,x+1)} for (y=1; y<=5; y++) print rows[y]}'
+```
+
+Output:
+
+```text
+.BEI.
+ADH..
+CG...
+F....
+.....
+```
+
+Shifted fill-mode example:
+
+```bash
+printf '.....\n.....\n.....\n.....\n.....\n' |
+  rkg 'g.ln:1,1,fur,A,B,C,D,E,F,G,skip:3'
+```
+
+Output:
+
+```text
+..CG.
+.BF..
+AE...
+D....
+.....
+```
+
+You can also route the same behavior through `mark` mode:
+
+```bash
+printf '.....\n..K..\n.....\n' |
+  rkg 'g.m:p("K"),line,r,A,B'
+```
+
+Multiple byte example:
+
+```bash
+seq -f 'printf "　%%.s" {1..10};echo # %g' 1 7 |
+  bash |
+  rkg 'g.ln:1,1,fur,'$(echo "ウンコとこの子とボディビルそしてチンコ"|sed 's/\B/,/g')',skip:1' |
+  sed 's/$/\$/g'
+```
+
+Output:
+
+```text
+　ンこボそ　　　　　$
+ウととルコ　　　　　$
+コ子ビン　　　　　　$
+のィチ　　　　　　　$
+デて　　　　　　　　$
+し　　　　　　　　　$
+　　　　　　　　　　$
+
 ```
 
 </details>
