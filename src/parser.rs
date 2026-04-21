@@ -34,12 +34,12 @@ fn parse_statement(src: &str) -> Result<Statement> {
         (Receiver::Rec, rest)
     } else if let Some(rest) = src.strip_prefix("rec.") {
         (Receiver::Rec, rest)
-    } else if let Some(rest) = src.strip_prefix("d.") {
+    } else if let Some(rest) = src.strip_prefix("g.") {
         (Receiver::Grid, rest)
     } else if let Some(rest) = src.strip_prefix("grid.") {
         (Receiver::Grid, rest)
     } else {
-        bail!("statement must start with r./rec. or d./grid.: {src}")
+        bail!("statement must start with r./rec. or g./grid.: {src}")
     };
 
     let parts = split_top_level(rest, '.');
@@ -90,7 +90,7 @@ fn split_pipeline_stages(src: &str) -> Vec<String> {
 
 fn starts_with_receiver(src: &str) -> bool {
     let s = src.trim_start();
-    s.starts_with("r.") || s.starts_with("rec.") || s.starts_with("d.") || s.starts_with("grid.")
+    s.starts_with("r.") || s.starts_with("rec.") || s.starts_with("g.") || s.starts_with("grid.")
 }
 
 fn parse_call(src: &str) -> Result<Call> {

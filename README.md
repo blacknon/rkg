@@ -16,7 +16,7 @@ bash/zsh without leaning too heavily on `"` or `()`.
 ### Features
 
 - `r.` / `rec.` for record mode
-- `d.` / `grid.` for grid mode
+- `g.` / `grid.` for grid mode
 - method chaining with `.`
 - pipeline chaining with `|`
 - statement reset with `;`
@@ -74,7 +74,7 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
 
 ```text
 r.fs(",").x(2,";").g(1,s(2)).ofs(",");
-d.t().rt("r").m("K","rook","*")
+g.t().rt("r").m("K","rook","*")
 ```
 
 Shorthand forms are also supported for shell-friendly one-liners:
@@ -82,10 +82,10 @@ Shorthand forms are also supported for shell-friendly one-liners:
 ```text
 mode.method:arg1,arg2.setting=value;mode.method:arg
 mode.method | mode.method
-d.t.rt:r
+g.t.rt:r
 ```
 
-- `|` pipes the previous stage output into the next stage when the right side starts with `r.`/`d.`
+- `|` pipes the previous stage output into the next stage when the right side starts with `r.`/`g.`
 - `method(...)` is the classic call form
 - `method:arg1,arg2` is shorthand for `method(arg1,arg2)`
 - `method=value` is shorthand for single-argument config-style calls like `ofs("|")`
@@ -164,7 +164,7 @@ Command:
 
 ```bash
 printf 'A 10\nB 20\n' |
-  rkg 'r.p:1,2.ofs=- | d.t'
+  rkg 'r.p:1,2.ofs=- | g.t'
 ```
 
 Existing commands:
@@ -325,7 +325,7 @@ B 20
 
 - `r.p:1,3.ofs=|` is equivalent to `r.p(1,3).ofs("|")`
 - `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
-- `d.t.rt:r` is equivalent to `d.t().rt("r")`
+- `g.t.rt:r` is equivalent to `g.t().rt("r")`
 - shorthand is most useful for simple one-liners; regular `()` calls remain available for anything that needs clearer quoting
 - the `Existing commands` snippets below are example-specific equivalents built from common shell tools, not drop-in general replacements for the full DSL
 
@@ -1224,14 +1224,14 @@ Command:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg -O'|' 'd.fs(",")'
+  rkg -O'|' 'g.fs(",")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg -O'|' 'd.fs=,'
+  rkg -O'|' 'g.fs=,'
 ```
 
 Existing commands:
@@ -1267,14 +1267,14 @@ Command:
 
 ```bash
 printf 'abc|def|ghi|' |
-  rkg 'd.rs("|")'
+  rkg 'g.rs("|")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc|def|ghi|' |
-  rkg 'd.rs=|'
+  rkg 'g.rs=|'
 ```
 
 Option only:
@@ -1319,14 +1319,14 @@ Command:
 
 ```bash
 printf 'abc\ndef\n' |
-  rkg 'd.ofs("|")'
+  rkg 'g.ofs("|")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc\ndef\n' |
-  rkg 'd.ofs=|'
+  rkg 'g.ofs=|'
 ```
 
 Option only:
@@ -1370,14 +1370,14 @@ Command:
 
 ```bash
 printf 'abc\ndef\n' |
-  rkg 'd.ors("---\n")'
+  rkg 'g.ors("---\n")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc\ndef\n' |
-  rkg 'd.ors="---\n"'
+  rkg 'g.ors="---\n"'
 ```
 
 Option only:
@@ -1422,14 +1422,14 @@ Command:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.t()'
+  rkg 'g.t()'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.t'
+  rkg 'g.t'
 ```
 
 Existing commands:
@@ -1468,14 +1468,14 @@ Command:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.rt("r")'
+  rkg 'g.rt("r")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.rt:r'
+  rkg 'g.rt:r'
 ```
 
 Existing commands:
@@ -1507,14 +1507,14 @@ Command:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.rt("180")'
+  rkg 'g.rt("180")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
-  rkg 'd.rt=180'
+  rkg 'g.rt=180'
 ```
 
 Existing commands:
@@ -1553,14 +1553,14 @@ Command:
 
 ```bash
 printf '.....\n..K..\n.....\n' |
-  rkg 'd.m("K","rook","*")'
+  rkg 'g.m("K","rook","*")'
 ```
 
 Shorthand:
 
 ```bash
 printf '.....\n..K..\n.....\n' |
-  rkg 'd.m:K,rook,*'
+  rkg 'g.m:K,rook,*'
 ```
 
 Existing commands:
@@ -1599,14 +1599,14 @@ Command:
 
 ```bash
 printf '.....\n.XOOX\n.....\n' |
-  rkg 'd.m("X","O","X","*")'
+  rkg 'g.m("X","O","X","*")'
 ```
 
 Shorthand:
 
 ```bash
 printf '.....\n.XOOX\n.....\n' |
-  rkg 'd.m:X,O,X,*'
+  rkg 'g.m:X,O,X,*'
 ```
 
 Existing commands:
@@ -1677,4 +1677,4 @@ B 15
 - `fs` is treated as a regex for record mode, similar to AWK `FS`
 - CSV quoting is **not** implemented; this prototype is regex-split based
 - `;` resets to the original stdin; it does **not** pass the previous statement result to the next one
-- grid mode defaults to character cells; `d.fs(",")` switches to separated cells
+- grid mode defaults to character cells; `g.fs(",")` switches to separated cells

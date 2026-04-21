@@ -38,7 +38,7 @@ struct Cli {
     #[arg(short = 'N', long = "output-record-separator")]
     output_record_separator: Option<String>,
 
-    /// DSL program, e.g. r.fs(",").x(2,";").g(1,s(2)); d.t().rt("r")
+    /// DSL program, e.g. r.fs(",").x(2,";").g(1,s(2)); g.t().rt("r")
     expr: Option<String>,
 }
 

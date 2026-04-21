@@ -72,7 +72,7 @@ fn readme_record_example_works() {
 
 #[test]
 fn readme_grid_example_works() {
-    assert_run(r#"d.t().rt("r")"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
+    assert_run(r#"g.t().rt("r")"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn statement_reset_uses_original_stdin() {
 
 #[test]
 fn pipe_passes_record_output_into_grid_input() {
-    assert_run(r#"r.ofs=| | d.t"#, "A 10\nB 20\n", "AB\n||\n12\n00\n");
+    assert_run(r#"r.ofs=| | g.t"#, "A 10\nB 20\n", "AB\n||\n12\n00\n");
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn pipe_does_not_conflict_with_bare_pipe_argument() {
 #[test]
 fn pattern_mark_marks_through_cells() {
     assert_run(
-        r#"d.m("X","O","X","*")"#,
+        r#"g.m("X","O","X","*")"#,
         ".....\n.XOOX\n.....\n",
         ".....\n.X**X\n.....\n",
     );
@@ -156,7 +156,7 @@ fn output_separators_option_apply_before_grid_dsl() {
     let mut grid_cfg = GridConfig::default();
     grid_cfg.ofs = "|".to_string();
     grid_cfg.ors = "---\n".to_string();
-    let out = run_with_configs(r#"d.t"#, "ab\ncd\n", RecConfig::default(), grid_cfg)
+    let out = run_with_configs(r#"g.t"#, "ab\ncd\n", RecConfig::default(), grid_cfg)
         .expect("grid output separators should succeed");
     assert_eq!(out, "a|c---\nb|d---\n");
 }
@@ -204,7 +204,7 @@ fn equals_and_colon_call_syntax_can_mix() {
 
 #[test]
 fn bare_zero_arg_call_syntax_works() {
-    assert_run(r#"d.t.rt:r"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
+    assert_run(r#"g.t.rt:r"#, "abc\ndef\nghi\n", "cba\nfed\nihg\n");
 }
 
 #[test]
@@ -218,9 +218,24 @@ fn shorthand_record_syntax_matches_classic_syntax() {
 #[test]
 fn shorthand_grid_syntax_matches_classic_syntax() {
     let input = "abc\ndef\nghi\n";
-    let classic = run(r#"d.t().rt("r")"#, input).expect("classic syntax should succeed");
-    let shorthand = run(r#"d.t.rt:r"#, input).expect("shorthand syntax should succeed");
+    let classic = run(r#"g.t().rt("r")"#, input).expect("classic syntax should succeed");
+    let shorthand = run(r#"g.t.rt:r"#, input).expect("shorthand syntax should succeed");
     assert_eq!(shorthand, classic);
+}
+
+#[test]
+fn grid_receiver_short_alias_g_is_accepted() {
+    assert_run(r#"g.t"#, "ab\ncd\n", "ac\nbd\n");
+}
+
+#[test]
+fn legacy_grid_receiver_d_is_rejected() {
+    let err = run(r#"d.t"#, "ab\ncd\n").expect_err("legacy d receiver should fail");
+    assert!(
+        err.to_string()
+            .contains("statement must start with r./rec. or g./grid."),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]
