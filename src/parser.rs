@@ -130,24 +130,29 @@ fn is_call_syntax(src: &str) -> bool {
 }
 
 fn parse_call_syntax(src: &str) -> Result<CallSyntax<'_>> {
-    if let Some(open) = src.find('(') {
-        let name = src[..open].trim().to_string();
+    let shorthand = find_shorthand_delim(src);
+    let open = src.find('(');
+
+    if let Some((idx, _delim)) = shorthand {
+        if open.map(|open_idx| idx < open_idx).unwrap_or(true) {
+            let name = src[..idx].trim().to_string();
+            ensure_call_name(&name, src)?;
+            return Ok(CallSyntax::Shorthand {
+                name,
+                inner: &src[idx + 1..],
+            });
+        }
+    }
+
+    if let Some(open_idx) = open {
+        let name = src[..open_idx].trim().to_string();
         ensure_call_name(&name, src)?;
         let close = src
             .rfind(')')
             .ok_or_else(|| anyhow!("expected ')' in call: {src}"))?;
         return Ok(CallSyntax::Paren {
             name,
-            inner: &src[open + 1..close],
-        });
-    }
-
-    if let Some((idx, _delim)) = find_shorthand_delim(src) {
-        let name = src[..idx].trim().to_string();
-        ensure_call_name(&name, src)?;
-        return Ok(CallSyntax::Shorthand {
-            name,
-            inner: &src[idx + 1..],
+            inner: &src[open_idx + 1..close],
         });
     }
 

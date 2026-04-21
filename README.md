@@ -74,7 +74,7 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
 
 ```text
 r.fs(",").x(2,";").g(1,s(2)).ofs(",");
-g.t().rt("r").m("K","orth","*")
+g.t().rt("r").m(p("K"),"orth","*")
 ```
 
 Shorthand forms are also supported for shell-friendly one-liners:
@@ -318,13 +318,14 @@ B 20
 - `rs(sep)` / `ofs(sep)` / `ors(sep)`
 - `t()` / `transpose()`
 - `rt("r"|"l"|"180")` / `rotate(...)`
-- `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`)
+- `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`); `from` may be a literal or `pick(value[, n])` / `p(value[, n])`
 - `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
 
 ### Shorthand syntax
 
 - `r.p:1,3.ofs=|` is equivalent to `r.p(1,3).ofs("|")`
 - `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
+- `g.m:p("K",2),"diag","*"` is equivalent to `g.m(p("K",2),"diag","*")`
 - `g.t.rt:r` is equivalent to `g.t().rt("r")`
 - shorthand is most useful for simple one-liners; regular `()` calls remain available for anything that needs clearer quoting
 - the `Existing commands` snippets below are example-specific equivalents built from common shell tools, not drop-in general replacements for the full DSL
@@ -1537,6 +1538,7 @@ cba
 #### `m(from, ray, put)` / `mark(from, ray, put)`
 
 Marks all reachable cells along the specified ray directions from the source cell.
+`from` can be a literal cell value or `pick(value[, n])` / `p(value[, n])`, which selects the nth matching cell in top-to-bottom, left-to-right order.
 
 <details>
 <summary>Example</summary>
@@ -1544,38 +1546,52 @@ Marks all reachable cells along the specified ray directions from the source cel
 Input:
 
 ```text
-.....
-..K..
-.....
+.......
+.......
+...K...
+.......
+.......
 ```
 
 Command:
 
 ```bash
-printf '.....\n..K..\n.....\n' |
-  rkg 'g.m("K","orth","*")'
+printf '.......\n.......\n...K...\n.......\n.......\n' |
+  rkg 'g.m(p("K"),"orth","*")'
 ```
 
-Shorthand:
+Nth match:
 
 ```bash
-printf '.....\n..K..\n.....\n' |
-  rkg 'g.m:K,orth,*'
+printf 'K....\n.....\n..K..\n.....\n....K\n' |
+  rkg 'g.m(p("K",2),"diag","*")'
 ```
 
 Existing commands:
 
 ```bash
-printf '.....\n..K..\n.....\n' |
+printf '.......\n.......\n...K...\n.......\n.......\n' |
   awk '{rows[NR]=$0; if ((p=index($0,"K"))>0) {ky=NR; kx=p}} END {for (y=1; y<=NR; y++) {out=""; for (x=1; x<=length(rows[y]); x++) {c=substr(rows[y], x, 1); if ((y==ky || x==kx) && !(y==ky && x==kx) && c==".") c="*"; out=out c} print out}}'
 ```
 
 Output:
 
 ```text
-..*..
-**K**
-..*..
+...*...
+...*...
+***K***
+...*...
+...*...
+```
+
+Nth match output:
+
+```text
+*...*
+.*.*.
+..K..
+.*.*.
+*...*
 ```
 
 </details>
@@ -1590,38 +1606,42 @@ Marks only the matching middle cells when they are sandwiched between `from` and
 Input:
 
 ```text
-.....
-.XOOX
-.....
+.......
+.......
+.XOOOX.
+.......
+.......
 ```
 
 Command:
 
 ```bash
-printf '.....\n.XOOX\n.....\n' |
+printf '.......\n.......\n.XOOOX.\n.......\n.......\n' |
   rkg 'g.m("X","O","X","*")'
 ```
 
 Shorthand:
 
 ```bash
-printf '.....\n.XOOX\n.....\n' |
+printf '.......\n.......\n.XOOOX.\n.......\n.......\n' |
   rkg 'g.m:X,O,X,*'
 ```
 
 Existing commands:
 
 ```bash
-printf '.....\n.XOOX\n.....\n' |
-  sed 's/XOOX/X**X/'
+printf '.......\n.......\n.XOOOX.\n.......\n.......\n' |
+  sed 's/XOOOX/X***X/'
 ```
 
 Output:
 
 ```text
-.....
-.X**X
-.....
+.......
+.......
+.X***X.
+.......
+.......
 ```
 
 </details>

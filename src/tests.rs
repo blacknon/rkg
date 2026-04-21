@@ -135,6 +135,42 @@ fn mark_accepts_diag_ray_name() {
 }
 
 #[test]
+fn mark_can_pick_origin_by_value() {
+    assert_run(
+        r#"g.m(pick("K"),"orth","*")"#,
+        ".......\n.......\n...K...\n.......\n.......\n",
+        "...*...\n...*...\n***K***\n...*...\n...*...\n",
+    );
+}
+
+#[test]
+fn mark_can_pick_nth_origin_by_value() {
+    assert_run(
+        r#"g.m(pick("K",2),"diag","*")"#,
+        "K....\n.....\n..K..\n.....\n....K\n",
+        "*...*\n.*.*.\n..K..\n.*.*.\n*...*\n",
+    );
+}
+
+#[test]
+fn mark_can_use_p_alias_for_pick() {
+    assert_run(
+        r#"g.m(p("K"),"orth","*")"#,
+        ".......\n.......\n...K...\n.......\n.......\n",
+        "...*...\n...*...\n***K***\n...*...\n...*...\n",
+    );
+}
+
+#[test]
+fn mark_can_use_p_alias_for_nth_pick() {
+    assert_run(
+        r#"g.m(p("K",2),"diag","*")"#,
+        "K....\n.....\n..K..\n.....\n....K\n",
+        "*...*\n.*.*.\n..K..\n.*.*.\n*...*\n",
+    );
+}
+
+#[test]
 fn field_separator_option_accepts_regex() {
     let out = run_with_fs(
         r#"r.p(1,2,3).ofs("|")"#,
@@ -200,6 +236,15 @@ fn colon_call_syntax_works() {
 #[test]
 fn colon_call_syntax_supports_nested_calls() {
     assert_run(r#"r.g:1,s:2"#, "A 10\nA 20\nB 7\nB 8\n", "A 30\nB 15\n");
+}
+
+#[test]
+fn shorthand_outer_call_can_wrap_nested_paren_call() {
+    assert_run(
+        "g.m:p(\"K\",2),\"diag\",\"*\"",
+        "K....\n.....\n..K..\n.....\n....K\n",
+        "*...*\n.*.*.\n..K..\n.*.*.\n*...*\n",
+    );
 }
 
 #[test]

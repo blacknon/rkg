@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use regex::Regex;
 
-use crate::ast::{Call, Grid, GridConfig};
-use crate::util::{arg_string, expr_to_string, split_keep_nonempty, unescape};
+use crate::ast::{Call, Expr, Grid, GridConfig};
+use crate::util::{arg_string, arg_usize_expr, expr_to_string, split_keep_nonempty, unescape};
 
 pub fn parse_grid(input: &str, cfg: GridConfig) -> Result<Grid> {
     let rs = unescape(&cfg.rs);
@@ -120,37 +120,33 @@ fn grid_rotate(mut grid: Grid, call: &Call) -> Result<Grid> {
 fn grid_mark(mut grid: Grid, call: &Call) -> Result<Grid> {
     match call.args.len() {
         3 => {
-            let from = expr_to_string(&call.args[0])?;
+            let origins = mark_origins(&grid, &call.args[0])?;
             let ray = expr_to_string(&call.args[1])?;
             let put = expr_to_string(&call.args[2])?;
             let dirs = dirs_from_ray(&ray)?;
             let mut marks = Vec::new();
 
-            for y in 0..grid.cells.len() {
-                for x in 0..grid.cells[y].len() {
-                    if grid.cells[y][x] == from {
-                        for (dx, dy) in &dirs {
-                            let mut cx = x as isize + dx;
-                            let mut cy = y as isize + dy;
-                            while cy >= 0
-                                && (cy as usize) < grid.cells.len()
-                                && cx >= 0
-                                && (cx as usize) < grid.cells[cy as usize].len()
-                            {
-                                if grid.cells[cy as usize][cx as usize].is_empty() {
-                                    break;
-                                }
-                                marks.push((cx as usize, cy as usize));
-                                cx += dx;
-                                cy += dy;
-                            }
+            for (x, y) in &origins {
+                for (dx, dy) in &dirs {
+                    let mut cx = *x as isize + dx;
+                    let mut cy = *y as isize + dy;
+                    while cy >= 0
+                        && (cy as usize) < grid.cells.len()
+                        && cx >= 0
+                        && (cx as usize) < grid.cells[cy as usize].len()
+                    {
+                        if grid.cells[cy as usize][cx as usize].is_empty() {
+                            break;
                         }
+                        marks.push((cx as usize, cy as usize));
+                        cx += dx;
+                        cy += dy;
                     }
                 }
             }
 
             for (x, y) in marks {
-                if grid.cells[y][x] != from {
+                if !origins.contains(&(x, y)) {
                     grid.cells[y][x] = put.clone();
                 }
             }
@@ -158,38 +154,34 @@ fn grid_mark(mut grid: Grid, call: &Call) -> Result<Grid> {
             Ok(grid)
         }
         4 => {
-            let from = expr_to_string(&call.args[0])?;
+            let origins = mark_origins(&grid, &call.args[0])?;
             let through_pat = Regex::new(&expr_to_string(&call.args[1])?)?;
             let to = expr_to_string(&call.args[2])?;
             let put = expr_to_string(&call.args[3])?;
             let dirs = dirs_from_ray("8")?;
             let mut marks = Vec::new();
 
-            for y in 0..grid.cells.len() {
-                for x in 0..grid.cells[y].len() {
-                    if grid.cells[y][x] == from {
-                        for (dx, dy) in &dirs {
-                            let mut cx = x as isize + dx;
-                            let mut cy = y as isize + dy;
-                            let mut seen = Vec::new();
-                            while cy >= 0
-                                && (cy as usize) < grid.cells.len()
-                                && cx >= 0
-                                && (cx as usize) < grid.cells[cy as usize].len()
-                            {
-                                let cur = &grid.cells[cy as usize][cx as usize];
-                                if through_pat.is_match(cur) {
-                                    seen.push((cx as usize, cy as usize));
-                                    cx += dx;
-                                    cy += dy;
-                                    continue;
-                                }
-                                if !seen.is_empty() && cur == &to {
-                                    marks.extend(seen);
-                                }
-                                break;
-                            }
+            for (x, y) in origins {
+                for (dx, dy) in &dirs {
+                    let mut cx = x as isize + dx;
+                    let mut cy = y as isize + dy;
+                    let mut seen = Vec::new();
+                    while cy >= 0
+                        && (cy as usize) < grid.cells.len()
+                        && cx >= 0
+                        && (cx as usize) < grid.cells[cy as usize].len()
+                    {
+                        let cur = &grid.cells[cy as usize][cx as usize];
+                        if through_pat.is_match(cur) {
+                            seen.push((cx as usize, cy as usize));
+                            cx += dx;
+                            cy += dy;
+                            continue;
                         }
+                        if !seen.is_empty() && cur == &to {
+                            marks.extend(seen);
+                        }
+                        break;
                     }
                 }
             }
@@ -202,6 +194,58 @@ fn grid_mark(mut grid: Grid, call: &Call) -> Result<Grid> {
         }
         _ => bail!("mark expects 3 args (from, ray, put) or 4 args (from, through_re, to, put)"),
     }
+}
+
+fn mark_origins(grid: &Grid, expr: &Expr) -> Result<Vec<(usize, usize)>> {
+    match expr {
+        Expr::Call(call) if is_pick_call(call) => Ok(vec![pick_coord(grid, call)?]),
+        _ => {
+            let from = expr_to_string(expr)?;
+            let mut origins = Vec::new();
+            for y in 0..grid.cells.len() {
+                for x in 0..grid.cells[y].len() {
+                    if grid.cells[y][x] == from {
+                        origins.push((x, y));
+                    }
+                }
+            }
+            if origins.is_empty() {
+                bail!("mark origin not found: {from}");
+            }
+            Ok(origins)
+        }
+    }
+}
+
+fn is_pick_call(call: &Call) -> bool {
+    call.name == "pick" || call.name == "p"
+}
+
+fn pick_coord(grid: &Grid, call: &Call) -> Result<(usize, usize)> {
+    if call.args.is_empty() || call.args.len() > 2 {
+        bail!("pick/p expects 1 or 2 args (value, nth)");
+    }
+
+    let needle = expr_to_string(&call.args[0])?;
+    let nth = if call.args.len() == 2 {
+        arg_usize_expr(call, 1)?
+    } else {
+        1
+    };
+
+    let mut seen = 0usize;
+    for y in 0..grid.cells.len() {
+        for x in 0..grid.cells[y].len() {
+            if grid.cells[y][x] == needle {
+                seen += 1;
+                if seen == nth {
+                    return Ok((x, y));
+                }
+            }
+        }
+    }
+
+    bail!("pick could not find match #{nth} for {needle}")
 }
 
 fn dirs_from_ray(ray: &str) -> Result<Vec<(isize, isize)>> {
