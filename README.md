@@ -106,6 +106,9 @@ d.t.rt:r
 
 Sets the initial record-mode field separator from the CLI before any DSL method runs.
 
+<details>
+<summary>Example</summary>
+
 Input:
 
 ```text
@@ -141,9 +144,14 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
   awk -F'[,:;]' '{OFS="|"}{print $1,$2,$3}'
 ```
 
+</details>
+
 ##### Shorthand pipeline chaining
 
 Passes shorthand output from one stage directly into the next stage with `|`.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -175,9 +183,14 @@ AB
 00
 ```
 
+</details>
+
 ##### `fs(re)`
 
 Splits each record with the given regex instead of the default whitespace separator.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -221,9 +234,14 @@ A 10
 B 20
 ```
 
+</details>
+
 ##### `rs(sep)`
 
 Treats the given separator as the boundary between input records.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -265,6 +283,8 @@ Output:
 A 10
 B 20
 ```
+
+</details>
 
 ## Reference
 
@@ -317,6 +337,9 @@ B 20
 
 Changes the separator used when fields are joined for output.
 
+<details>
+<summary>Example</summary>
+
 Input:
 
 ```text
@@ -360,9 +383,14 @@ A,10
 B,20
 ```
 
+</details>
+
 #### `ors(sep)` / output record separator
 
 Changes the separator used when output records are joined together.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -405,9 +433,14 @@ Output:
 A 10|B 20|
 ```
 
+</details>
+
 #### `p(...)` / `select(...)`
 
 Keeps only the requested fields and removes the rest.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -444,9 +477,14 @@ A tokyo
 B osaka
 ```
 
+</details>
+
 #### `sb(re, rep)` / `replace(re, rep)`
 
 Replaces text matching the regex in every cell.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -483,9 +521,14 @@ A-XX
 B-XX
 ```
 
+</details>
+
 #### `n(start_or_AZ)` / `enum(...)`
 
 Adds a numeric counter column to the front of each row.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -561,9 +604,14 @@ B B 20
 C C 30
 ```
 
+</details>
+
 #### `x(col, sep)` / `explode(...)`
 
 Splits one field into multiple rows while keeping the other columns as-is.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -603,9 +651,14 @@ B,7
 B,8
 ```
 
+</details>
+
 #### `i(key_col, val_col, join_sep?)` / `implode(...)`
 
 Merges rows with the same key by joining one value column into a single field.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -649,9 +702,14 @@ B 7,8,9
 C 100,200
 ```
 
+</details>
+
 #### `g(key_col, agg...)` / `groupby(...)`
 
 Groups rows by the key column and emits aggregate results per group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -688,9 +746,14 @@ A,60
 B,15
 ```
 
+</details>
+
 #### `sh("w2l", ...)` / `reshape(...)`
 
 Turns wide columns into repeated long-form rows.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -730,9 +793,14 @@ B math 70
 B eng 85
 ```
 
+</details>
+
 #### `sh("l2w", ...)` / `reshape(...)`
 
 Turns repeated long-form rows back into a wide table.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -773,9 +841,14 @@ A 90 80
 B 85 70
 ```
 
+</details>
+
 #### `f(template?)` / `flatten(...)`
 
 Renders each data row as a single string using the header names in the template.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -817,11 +890,16 @@ carol:25
 dave:41
 ```
 
+</details>
+
 ### Aggregators
 
 #### `s(col)` / `sum(col)`
 
 Sums the numeric values in the target column for each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -850,6 +928,8 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{c[$1]+=$2} END {for (k in c) print k, c[k]}' | sort
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nB 7\n' |
   datamash -s -g 1 sum 2
@@ -865,6 +945,9 @@ B 7
 #### `c()` / `count()`
 
 Counts how many rows belong to each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -893,6 +976,8 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{print $1}' | uniq -c | awk '{print $2, $1}'
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nB 7\n' |
   datamash -s -g 1 count 1
@@ -908,6 +993,9 @@ B 1
 #### `mn(col)` / `min(col)`
 
 Takes the smallest numeric value in the target column for each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -940,6 +1028,8 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2n | awk '!a[$1]++'
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   datamash -s -g 1 min 2
@@ -956,6 +1046,9 @@ C 3
 #### `mx(col)` / `max(col)`
 
 Takes the largest numeric value in the target column for each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -988,6 +1081,8 @@ Existing commands:
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2nr | awk '!a[$1]++'
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   datamash -s -g 1 max 2
@@ -1004,6 +1099,9 @@ C 9
 #### `a(col)` / `avg(col)`
 
 Computes the average numeric value in the target column for each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1037,6 +1135,8 @@ Existing commands:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   awk '{sum[$1]+=$2; cnt[$1]++} END {for (k in sum) print k, sum[k] / cnt[k]}' |
   sort
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   datamash -s -g 1 mean 2
@@ -1053,6 +1153,9 @@ C 6
 #### `med(col)` / `median(col)`
 
 Computes the median numeric value in the target column for each group.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1086,6 +1189,8 @@ Existing commands:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   awk '{a[$1][++n[$1]]=$2} END {for (k in a) {asort(a[k]); print k, n[k]%2 ? a[k][(n[k]+1)/2] : (a[k][n[k]/2]+a[k][n[k]/2+1])/2}}' |
   sort
+</details>
+
 # or, with datamash:
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   datamash -s -g 1 median 2
@@ -1104,6 +1209,9 @@ C 6
 #### `fs(sep)` / cell separator
 
 Treats each input row as separator-delimited cells instead of a character grid.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1140,9 +1248,14 @@ a|b|c
 d|e|f
 ```
 
+</details>
+
 #### `rs(sep)` / record separator
 
 Treats the given separator as the boundary between grid rows.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1186,9 +1299,14 @@ def
 ghi
 ```
 
+</details>
+
 #### `ofs(sep)` / output field separator
 
 Changes the separator used when cells are joined for each output row.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1232,9 +1350,14 @@ a|b|c
 d|e|f
 ```
 
+</details>
+
 #### `ors(sep)` / output record separator
 
 Changes the separator used when output rows are joined together.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1278,9 +1401,14 @@ abc---
 def---
 ```
 
+</details>
+
 #### `t()` / `transpose()`
 
 Swaps rows and columns in the grid.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1319,9 +1447,14 @@ beh
 cfi
 ```
 
+</details>
+
 #### `rt("r"|"l"|"180")` / `rotate(...)`
 
 Rotates the grid 90 degrees clockwise.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1399,9 +1532,14 @@ fed
 cba
 ```
 
+</details>
+
 #### `m(from, ray, put)` / `mark(from, ray, put)`
 
 Marks all reachable cells along the specified ray directions from the source cell.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1440,9 +1578,14 @@ Output:
 ..*..
 ```
 
+</details>
+
 #### `m(from, through_re, to, put)` / `mark(from, through_re, to, put)`
 
 Marks only the matching middle cells when they are sandwiched between `from` and `to`.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1481,9 +1624,14 @@ Output:
 .....
 ```
 
+</details>
+
 ### Multiple statements
 
 Runs each statement against the original stdin, so later statements do not receive earlier output.
+
+<details>
+<summary>Example</summary>
 
 Input:
 
@@ -1521,6 +1669,8 @@ B 15
 1 A 10,20
 2 B 7,8
 ```
+
+</details>
 
 ## Notes
 
