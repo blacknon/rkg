@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 
-use crate::ast::{Call, Expr, Receiver, Statement};
+use crate::ast::{Call, Expr, Pipeline, Receiver, Statement};
 
 enum CallSyntax<'a> {
     Paren { name: String, inner: &'a str },
@@ -8,7 +8,7 @@ enum CallSyntax<'a> {
     Bare { name: String },
 }
 
-pub fn parse_program(src: &str) -> Result<Vec<Statement>> {
+pub fn parse_program(src: &str) -> Result<Vec<Pipeline>> {
     let stmts = split_top_level(src, ';');
     let mut out = Vec::new();
     for stmt in stmts {
@@ -16,9 +16,17 @@ pub fn parse_program(src: &str) -> Result<Vec<Statement>> {
         if s.is_empty() {
             continue;
         }
-        out.push(parse_statement(s)?);
+        out.push(parse_pipeline(s)?);
     }
     Ok(out)
+}
+
+fn parse_pipeline(src: &str) -> Result<Pipeline> {
+    let stages = split_pipeline_stages(src)
+        .into_iter()
+        .map(|stage| parse_statement(stage.trim()))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(Pipeline { stages })
 }
 
 fn parse_statement(src: &str) -> Result<Statement> {
@@ -41,6 +49,48 @@ fn parse_statement(src: &str) -> Result<Statement> {
         .collect::<Result<Vec<_>>>()?;
 
     Ok(Statement { receiver, calls })
+}
+
+fn split_pipeline_stages(src: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut in_str = false;
+    let mut cur = String::new();
+    let mut prev = '\0';
+
+    for (idx, ch) in src.char_indices() {
+        match ch {
+            '"' if prev != '\\' => {
+                in_str = !in_str;
+                cur.push(ch);
+            }
+            '(' if !in_str => {
+                depth += 1;
+                cur.push(ch);
+            }
+            ')' if !in_str => {
+                depth -= 1;
+                cur.push(ch);
+            }
+            '|' if !in_str && depth == 0 && starts_with_receiver(&src[idx + ch.len_utf8()..]) => {
+                out.push(cur.trim().to_string());
+                cur.clear();
+            }
+            _ => cur.push(ch),
+        }
+        prev = ch;
+    }
+
+    if !cur.trim().is_empty() {
+        out.push(cur.trim().to_string());
+    }
+
+    out
+}
+
+fn starts_with_receiver(src: &str) -> bool {
+    let s = src.trim_start();
+    s.starts_with("r.") || s.starts_with("rec.") || s.starts_with("d.") || s.starts_with("grid.")
 }
 
 fn parse_call(src: &str) -> Result<Call> {

@@ -347,6 +347,7 @@ fn parse_agg(expr: &Expr) -> Result<Agg> {
             "min" | "mn" => Ok(Agg::Min(arg_usize_expr(call, 0)? - 1)),
             "max" | "mx" => Ok(Agg::Max(arg_usize_expr(call, 0)? - 1)),
             "avg" | "a" => Ok(Agg::Avg(arg_usize_expr(call, 0)? - 1)),
+            "median" | "med" => Ok(Agg::Median(arg_usize_expr(call, 0)? - 1)),
             other => bail!("unknown aggregator: {other}"),
         },
         _ => bail!("groupby aggregators must be function calls"),
@@ -401,6 +402,25 @@ fn eval_agg(agg: &Agg, rows: &[&Vec<String>]) -> Result<String> {
                 }
             }
             Ok(trim_num(if count == 0.0 { 0.0 } else { sum / count }))
+        }
+        Agg::Median(col) => {
+            let mut vals = Vec::new();
+            for row in rows {
+                if let Some(v) = row.get(*col) {
+                    vals.push(parse_num(v)?);
+                }
+            }
+            if vals.is_empty() {
+                return Ok("0".to_string());
+            }
+            vals.sort_by(f64::total_cmp);
+            let mid = vals.len() / 2;
+            let median = if vals.len() % 2 == 0 {
+                (vals[mid - 1] + vals[mid]) / 2.0
+            } else {
+                vals[mid]
+            };
+            Ok(trim_num(median))
         }
     }
 }

@@ -12,7 +12,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use std::io::{self, Read};
 
-use crate::ast::{GridConfig, RecConfig, Receiver, Statement};
+use crate::ast::{GridConfig, Pipeline, RecConfig, Receiver, Statement};
 
 #[derive(Parser, Debug)]
 #[command(name = "rkg")]
@@ -54,9 +54,11 @@ fn main() -> Result<()> {
         }
         stmts
     } else {
-        vec![Statement {
-            receiver: Receiver::Rec,
-            calls: Vec::new(),
+        vec![Pipeline {
+            stages: vec![Statement {
+                receiver: Receiver::Rec,
+                calls: Vec::new(),
+            }],
         }]
     };
 
@@ -87,7 +89,7 @@ fn main() -> Result<()> {
 
     let outputs = stmts
         .iter()
-        .map(|stmt| engine::eval_statement_with_configs(stmt, &input, &rec_cfg, &grid_cfg))
+        .map(|pipeline| engine::eval_pipeline_with_configs(pipeline, &input, &rec_cfg, &grid_cfg))
         .collect::<Result<Vec<_>>>()?;
 
     if cli.print_all {

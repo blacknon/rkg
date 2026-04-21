@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::ast::{GridConfig, RecConfig};
+use crate::ast::{GridConfig, Pipeline, RecConfig};
 use crate::parser::parse_program;
 
 fn run(expr: &str, input: &str) -> Result<String> {
@@ -8,20 +8,22 @@ fn run(expr: &str, input: &str) -> Result<String> {
     let mut outputs = Vec::new();
     let rec_cfg = RecConfig::default();
     let grid_cfg = GridConfig::default();
-    for stmt in &stmts {
-        outputs.push(crate::engine::eval_statement_with_configs(
-            stmt, input, &rec_cfg, &grid_cfg,
+    for pipeline in &stmts {
+        outputs.push(crate::engine::eval_pipeline_with_configs(
+            pipeline, input, &rec_cfg, &grid_cfg,
         )?);
     }
     Ok(outputs.last().cloned().unwrap_or_default())
 }
 
 fn run_without_expr(input: &str, rec_cfg: RecConfig, grid_cfg: GridConfig) -> Result<String> {
-    let stmt = crate::ast::Statement {
-        receiver: crate::ast::Receiver::Rec,
-        calls: Vec::new(),
+    let pipeline = Pipeline {
+        stages: vec![crate::ast::Statement {
+            receiver: crate::ast::Receiver::Rec,
+            calls: Vec::new(),
+        }],
     };
-    crate::engine::eval_statement_with_configs(&stmt, input, &rec_cfg, &grid_cfg)
+    crate::engine::eval_pipeline_with_configs(&pipeline, input, &rec_cfg, &grid_cfg)
 }
 
 fn assert_run(expr: &str, input: &str, expected: &str) {
@@ -35,9 +37,9 @@ fn run_with_fs(expr: &str, input: &str, fs: &str) -> Result<String> {
     let mut rec_cfg = RecConfig::default();
     rec_cfg.fs = fs.to_string();
     let grid_cfg = GridConfig::default();
-    for stmt in &stmts {
-        outputs.push(crate::engine::eval_statement_with_configs(
-            stmt, input, &rec_cfg, &grid_cfg,
+    for pipeline in &stmts {
+        outputs.push(crate::engine::eval_pipeline_with_configs(
+            pipeline, input, &rec_cfg, &grid_cfg,
         )?);
     }
     Ok(outputs.last().cloned().unwrap_or_default())
@@ -51,9 +53,9 @@ fn run_with_configs(
 ) -> Result<String> {
     let stmts = parse_program(expr)?;
     let mut outputs = Vec::new();
-    for stmt in &stmts {
-        outputs.push(crate::engine::eval_statement_with_configs(
-            stmt, input, &rec_cfg, &grid_cfg,
+    for pipeline in &stmts {
+        outputs.push(crate::engine::eval_pipeline_with_configs(
+            pipeline, input, &rec_cfg, &grid_cfg,
         )?);
     }
     Ok(outputs.last().cloned().unwrap_or_default())
@@ -81,7 +83,9 @@ fn statement_reset_uses_original_stdin() {
     let grid_cfg = GridConfig::default();
     let outputs = stmts
         .iter()
-        .map(|stmt| crate::engine::eval_statement_with_configs(stmt, input, &rec_cfg, &grid_cfg))
+        .map(|pipeline| {
+            crate::engine::eval_pipeline_with_configs(pipeline, input, &rec_cfg, &grid_cfg)
+        })
         .collect::<Result<Vec<_>>>()
         .expect("both statements should succeed");
     assert_eq!(
@@ -91,6 +95,16 @@ fn statement_reset_uses_original_stdin() {
             "1 A 10,20\n2 B 7,8\n".to_string()
         ]
     );
+}
+
+#[test]
+fn pipe_passes_record_output_into_grid_input() {
+    assert_run(r#"r.ofs=| | d.t"#, "A 10\nB 20\n", "AB\n||\n12\n00\n");
+}
+
+#[test]
+fn pipe_does_not_conflict_with_bare_pipe_argument() {
+    assert_run(r#"r.p:1,2.ofs=|"#, "A 10\nB 20\n", "A|10\nB|20\n");
 }
 
 #[test]
@@ -127,8 +141,13 @@ fn output_separators_option_apply_before_record_dsl() {
     let mut rec_cfg = RecConfig::default();
     rec_cfg.ofs = ",".to_string();
     rec_cfg.ors = "|".to_string();
-    let out = run_with_configs(r#"r.p(1,2)"#, "A 10\nB 20\n", rec_cfg, GridConfig::default())
-        .expect("output separators should succeed");
+    let out = run_with_configs(
+        r#"r.p(1,2)"#,
+        "A 10\nB 20\n",
+        rec_cfg,
+        GridConfig::default(),
+    )
+    .expect("output separators should succeed");
     assert_eq!(out, "A,10|B,20|");
 }
 
@@ -202,4 +221,18 @@ fn shorthand_grid_syntax_matches_classic_syntax() {
     let classic = run(r#"d.t().rt("r")"#, input).expect("classic syntax should succeed");
     let shorthand = run(r#"d.t.rt:r"#, input).expect("shorthand syntax should succeed");
     assert_eq!(shorthand, classic);
+}
+
+#[test]
+fn median_aggregator_returns_middle_value_or_average_of_middle_pair() {
+    assert_run(
+        r#"r.g(1,med(2))"#,
+        "A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n",
+        "A 15\nB 9.5\nC 6\n",
+    );
+}
+
+#[test]
+fn median_aggregator_shorthand_works() {
+    assert_run(r#"r.g:1,med:2"#, "A 10\nA 30\nA 20\n", "A 20\n");
 }

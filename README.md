@@ -18,6 +18,7 @@ bash/zsh without leaning too heavily on `"` or `()`.
 - `r.` / `rec.` for record mode
 - `d.` / `grid.` for grid mode
 - method chaining with `.`
+- pipeline chaining with `|`
 - statement reset with `;`
 - AWK-like separators: `fs`, `rs`, `ofs`, `ors`
 - `-F` / `--field-separator` for AWK-like initial field separator override
@@ -62,7 +63,7 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
   cargo run -- -F '[,:;]' 'r.p:1,2,3.ofs=|'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A,10;tokyo\nB:20;osaka\n' |
@@ -80,14 +81,16 @@ Shorthand forms are also supported for shell-friendly one-liners:
 
 ```text
 mode.method:arg1,arg2.setting=value;mode.method:arg
+mode.method | mode.method
 d.t.rt:r
 ```
 
+- `|` pipes the previous stage output into the next stage when the right side starts with `r.`/`d.`
 - `method(...)` is the classic call form
 - `method:arg1,arg2` is shorthand for `method(arg1,arg2)`
 - `method=value` is shorthand for single-argument config-style calls like `ofs("|")`
 - bare `method` is shorthand for zero-argument calls like `t()`
-- `;` resets evaluation to the original stdin for the next statement
+- `;` resets evaluation to the original stdin for the next statement group
 - only the last statement is printed by default
 - `--print-all` prints all statement results separated by `---`
 - `-F` sets the initial record-mode `fs` before the DSL runs, and accepts regex patterns
@@ -131,11 +134,45 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
   rkg -F '[,:;]' 'r.p:1,2,3.ofs=|'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A,10;tokyo\nB:20;osaka\n' |
   awk -F'[,:;]' '{OFS="|"}{print $1,$2,$3}'
+```
+
+##### Shorthand pipeline chaining
+
+Passes shorthand output from one stage directly into the next stage with `|`.
+
+Input:
+
+```text
+A 10
+B 20
+```
+
+Command:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg 'r.p:1,2.ofs=- | d.t'
+```
+
+Existing commands:
+
+```bash
+printf 'A 10\nB 20\n' |
+  awk '{s=$1 "-" $2; for(i=1;i<=length(s);i++) col[i]=col[i] substr(s,i,1)} END{for(i=1; i in col; i++) print col[i]}'
+```
+
+Output:
+
+```text
+AB
+--
+12
+00
 ```
 
 ##### `fs(re)`
@@ -163,7 +200,14 @@ printf 'A,10\nB,20\n' |
   rkg 'r.fs=,'
 ```
 
-awk:
+Option only:
+
+```bash
+printf 'A,10\nB,20\n' |
+  rkg -F,
+```
+
+Existing commands:
 
 ```bash
 printf 'A,10\nB,20\n' |
@@ -201,7 +245,14 @@ printf 'A 10|B 20|' |
   rkg 'r.rs=|'
 ```
 
-awk:
+Option only:
+
+```bash
+printf 'A 10|B 20|' |
+  rkg -R'|'
+```
+
+Existing commands:
 
 ```bash
 printf 'A 10|B 20|' |
@@ -239,6 +290,7 @@ B 20
 - `mn(col)` / `min(col)`
 - `mx(col)` / `max(col)`
 - `a(col)` / `avg(col)`
+- `med(col)` / `median(col)`
 
 ### Grid functions
 
@@ -255,13 +307,13 @@ B 20
 - `r.g:1,s:2` is equivalent to `r.g(1,s(2))`
 - `d.t.rt:r` is equivalent to `d.t().rt("r")`
 - shorthand is most useful for simple one-liners; regular `()` calls remain available for anything that needs clearer quoting
-- the `awk` / `sed` snippets below are example-specific equivalents, not drop-in general replacements for the full DSL
+- the `Existing commands` snippets below are example-specific equivalents built from common shell tools, not drop-in general replacements for the full DSL
 
 ## Examples
 
 ### Record functions
 
-#### `ofs(sep)`
+#### `ofs(sep)` / output field separator
 
 Changes the separator used when fields are joined for output.
 
@@ -286,7 +338,7 @@ printf 'A 10\nB 20\n' |
   rkg 'r.ofs=,'
 ```
 
-Opion only:
+Option only:
 
 ```bash
 printf 'A 10\nB 20\n' |
@@ -294,7 +346,7 @@ printf 'A 10\nB 20\n' |
 ```
 
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nB 20\n' |
@@ -308,7 +360,7 @@ A,10
 B,20
 ```
 
-#### `ors(sep)`
+#### `ors(sep)` / output record separator
 
 Changes the separator used when output records are joined together.
 
@@ -333,7 +385,14 @@ printf 'A 10\nB 20\n' |
   rkg 'r.ors=|'
 ```
 
-awk:
+Option only:
+
+```bash
+printf 'A 10\nB 20\n' |
+  rkg -N'|'
+```
+
+Existing commands:
 
 ```bash
 printf 'A 10\nB 20\n' |
@@ -371,7 +430,7 @@ printf 'A 10 tokyo\nB 20 osaka\n' |
   rkg 'r.p:1,3'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10 tokyo\nB 20 osaka\n' |
@@ -410,7 +469,7 @@ printf 'A-10\nB-20\n' |
   rkg 'r.sb:[0-9],X'
 ```
 
-sed:
+Existing commands:
 
 ```bash
 printf 'A-10\nB-20\n' |
@@ -449,7 +508,7 @@ printf 'A 10\nB 20\n' |
   rkg 'r.n:1'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nB 20\n' |
@@ -487,7 +546,7 @@ printf 'A 10\nB 20\nC 30\n' |
   rkg 'r.n:A-Z'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nB 20\nC 30\n' |
@@ -527,7 +586,7 @@ printf 'A,10;20;30\nB,7;8\n' |
   rkg -F, -O, 'r.x:2,";"'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A,10;20;30\nB,7;8\n' |
@@ -575,7 +634,7 @@ printf 'A 10\nA 20\nA 30\nB 7\nB 8\nB 9\nC 100\nC 200\n' |
   rkg 'r.i:1,2,","'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nA 30\nB 7\nB 8\nB 9\nC 100\nC 200\n' |
@@ -615,7 +674,7 @@ printf 'A,10;20;30\nB,7;8\n' |
   rkg  -F, -O, 'r.x:2,";".g:1,s:2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A,10;20;30\nB,7;8\n' |
@@ -655,7 +714,7 @@ printf 'name math eng\nA 80 90\nB 70 85\n' |
   rkg 'r.sh:w2l,2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'name math eng\nA 80 90\nB 70 85\n' |
@@ -698,11 +757,12 @@ printf 'A math 80\nA eng 90\nB math 70\nB eng 85\n' |
   rkg 'r.sh:l2w,2,3'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A math 80\nA eng 90\nB math 70\nB eng 85\n' |
-  gawk '{if (!seen_col[$2]++) cols[++m]=$2; if (!seen_row[$1]++) rows[++n]=$1; data[$1,$2]=$3} END {asort(cols); printf "key"; for (i=1; i<=m; i++) printf " %s", cols[i]; print ""; for (r=1; r<=n; r++) {printf "%s", rows[r]; for (i=1; i<=m; i++) printf " %s", data[rows[r], cols[i]]; print ""}}'
+  sort -k2,2 -k1,1 |
+  awk 'BEGIN{OFS=" "} !c[$2]++{col[++m]=$2} !r[$1]++{row[++n]=$1} {a[$1,$2]=$3} END{printf "key"; for(i=1;i<=m;i++) printf OFS col[i]; print ""; for(j=1;j<=n;j++){printf row[j]; for(i=1;i<=m;i++) printf OFS a[row[j],col[i]]; print ""}}'
 ```
 
 Output:
@@ -741,7 +801,7 @@ printf 'name age\nalice 20\nbob 30\ncarol 25\ndave 41\n' |
   rkg 'r.f:"{name}:{age}"'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'name age\nalice 20\nbob 30\ncarol 25\ndave 41\n' |
@@ -785,11 +845,18 @@ printf 'A 10\nA 20\nB 7\n' |
   rkg 'r.g:1,s:2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{c[$1]+=$2} END {for (k in c) print k, c[k]}' | sort
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  datamash -s -g 1 sum 2
 ```
 
 Output:
@@ -825,11 +892,18 @@ printf 'A 10\nA 20\nB 7\n' |
   rkg 'r.g:1,c'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nB 7\n' |
   awk '{print $1}' | uniq -c | awk '{print $2, $1}'
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nB 7\n' |
+  datamash -s -g 1 count 1
 ```
 
 Output:
@@ -869,11 +943,18 @@ printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g:1,mn:2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2n | awk '!a[$1]++'
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  datamash -s -g 1 min 2
 ```
 
 Output:
@@ -914,11 +995,18 @@ printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g:1,mx:2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   sort -k1,1 -k2,2nr | awk '!a[$1]++'
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  datamash -s -g 1 max 2
 ```
 
 Output:
@@ -959,12 +1047,72 @@ printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   rkg 'r.g:1,a:2'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
   awk '{sum[$1]+=$2; cnt[$1]++} END {for (k in sum) print k, sum[k] / cnt[k]}' |
   sort
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  datamash -s -g 1 mean 2
+```
+
+Output:
+
+```text
+A 15
+B 9.5
+C 6
+```
+
+#### `med(col)` / `median(col)`
+
+Computes the median numeric value in the target column for each group.
+
+Input:
+
+```text
+A 10
+A 20
+A 15
+B 7
+B 12
+C 3
+C 9
+```
+
+Command:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  rkg 'r.g(1,med(2))'
+```
+
+Shorthand:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  rkg 'r.g:1,med:2'
+```
+
+Existing commands:
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  awk '{a[$1][++n[$1]]=$2} END {for (k in a) {asort(a[k]); print k, n[k]%2 ? a[k][(n[k]+1)/2] : (a[k][n[k]/2]+a[k][n[k]/2+1])/2}}' |
+  sort
+```
+
+With `datamash` (if installed):
+
+```bash
+printf 'A 10\nA 20\nA 15\nB 7\nB 12\nC 3\nC 9\n' |
+  datamash -s -g 1 median 2
 ```
 
 Output:
@@ -977,7 +1125,7 @@ C 6
 
 ### Grid functions
 
-#### `fs(sep)`
+#### `fs(sep)` / cell separator
 
 Treats each input row as separator-delimited cells instead of a character grid.
 
@@ -992,17 +1140,17 @@ Command:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg 'd.fs(",").ofs("|")'
+  rkg -O'|' 'd.fs(",")'
 ```
 
 Shorthand:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
-  rkg 'd.fs=,.ofs=|'
+  rkg -O'|' 'd.fs=,'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'a,b,c\nd,e,f\n' |
@@ -1016,7 +1164,7 @@ a|b|c
 d|e|f
 ```
 
-#### `rs(sep)`
+#### `rs(sep)` / record separator
 
 Treats the given separator as the boundary between grid rows.
 
@@ -1040,7 +1188,14 @@ printf 'abc|def|ghi|' |
   rkg 'd.rs=|'
 ```
 
-awk:
+Option only:
+
+```bash
+printf 'abc|def|ghi|' |
+  rkg -R'|'
+```
+
+Existing commands:
 
 ```bash
 printf 'abc|def|ghi|' |
@@ -1055,7 +1210,7 @@ def
 ghi
 ```
 
-#### `ofs(sep)`
+#### `ofs(sep)` / output field separator
 
 Changes the separator used when cells are joined for each output row.
 
@@ -1080,7 +1235,14 @@ printf 'abc\ndef\n' |
   rkg 'd.ofs=|'
 ```
 
-sed:
+Option only:
+
+```bash
+printf 'abc\ndef\n' |
+  rkg -O'|'
+```
+
+Existing commands:
 
 ```bash
 printf 'abc\ndef\n' |
@@ -1094,7 +1256,7 @@ a|b|c
 d|e|f
 ```
 
-#### `ors(sep)`
+#### `ors(sep)` / output record separator
 
 Changes the separator used when output rows are joined together.
 
@@ -1119,7 +1281,14 @@ printf 'abc\ndef\n' |
   rkg 'd.ors="---\n"'
 ```
 
-awk:
+Option only:
+
+```bash
+printf 'abc\ndef\n' |
+  rkg -N'---\n'
+```
+
+Existing commands:
 
 ```bash
 printf 'abc\ndef\n' |
@@ -1159,7 +1328,7 @@ printf 'abc\ndef\nghi\n' |
   rkg 'd.t'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
@@ -1200,7 +1369,7 @@ printf 'abc\ndef\nghi\n' |
   rkg 'd.rt:r'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
@@ -1239,7 +1408,7 @@ printf 'abc\ndef\nghi\n' |
   rkg 'd.rt=180'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf 'abc\ndef\nghi\n' |
@@ -1254,7 +1423,7 @@ fed
 cba
 ```
 
-#### `m(from, ray, put)`
+#### `m(from, ray, put)` / `mark(from, ray, put)`
 
 Marks all reachable cells along the specified ray directions from the source cell.
 
@@ -1280,7 +1449,7 @@ printf '.....\n..K..\n.....\n' |
   rkg 'd.m:K,rook,*'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 printf '.....\n..K..\n.....\n' |
@@ -1295,7 +1464,7 @@ Output:
 ..*..
 ```
 
-#### `m(from, through_re, to, put)`
+#### `m(from, through_re, to, put)` / `mark(from, through_re, to, put)`
 
 Marks only the matching middle cells when they are sandwiched between `from` and `to`.
 
@@ -1321,7 +1490,7 @@ printf '.....\n.XOOX\n.....\n' |
   rkg 'd.m:X,O,X,*'
 ```
 
-sed:
+Existing commands:
 
 ```bash
 printf '.....\n.XOOX\n.....\n' |
@@ -1361,7 +1530,7 @@ printf 'A 10,20\nB 7,8\n' |
   rkg --print-all 'r.x:2,",".g:1,s:2; r.n:1'
 ```
 
-awk:
+Existing commands:
 
 ```bash
 { printf 'A 10,20\nB 7,8\n' | awk '{split($2, a, ","); print $1, a[1] + a[2]}'; printf '%s\n' '---'; printf 'A 10,20\nB 7,8\n' | awk '{print NR, $0}'; }

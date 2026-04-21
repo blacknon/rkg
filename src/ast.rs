@@ -11,6 +11,11 @@ pub struct Statement {
 }
 
 #[derive(Debug, Clone)]
+pub struct Pipeline {
+    pub stages: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Call {
     pub name: String,
     pub args: Vec<Expr>,
@@ -81,4 +86,5 @@ pub enum Agg {
     Min(usize),
     Max(usize),
     Avg(usize),
+    Median(usize),
 }
