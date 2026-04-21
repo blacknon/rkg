@@ -1,7 +1,15 @@
 rkg
 ===
 
-**`r`ecord** + **`k`nit** + **`g`rid**
+<img src="assets/icon.png" alt="rkg icon" align="left" width="120" />
+
+<strong><code><span style="color: #d73a49;">r</span></code>ecord</strong> +
+<strong><code><span style="color: #d73a49;">k</span></code>nit</strong> +
+<strong><code><span style="color: #d73a49;">g</span></code>rid</strong>
+
+`rkg` is a one-liner oriented record/grid processor for text reshaping work.
+
+<br clear="left" />
 
 ## Description
 
