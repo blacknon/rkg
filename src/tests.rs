@@ -117,6 +117,24 @@ fn pattern_mark_marks_through_cells() {
 }
 
 #[test]
+fn mark_accepts_orth_ray_name() {
+    assert_run(
+        r#"g.m("K","orth","*")"#,
+        ".....\n..K..\n.....\n",
+        "..*..\n**K**\n..*..\n",
+    );
+}
+
+#[test]
+fn mark_accepts_diag_ray_name() {
+    assert_run(
+        r#"g.m("K","diag","*")"#,
+        ".....\n..K..\n.....\n",
+        ".*.*.\n..K..\n.*.*.\n",
+    );
+}
+
+#[test]
 fn field_separator_option_accepts_regex() {
     let out = run_with_fs(
         r#"r.p(1,2,3).ofs("|")"#,

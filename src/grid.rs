@@ -206,9 +206,9 @@ fn grid_mark(mut grid: Grid, call: &Call) -> Result<Grid> {
 
 fn dirs_from_ray(ray: &str) -> Result<Vec<(isize, isize)>> {
     match ray {
-        "rook" | "rk" => Ok(vec![(1, 0), (-1, 0), (0, 1), (0, -1)]),
-        "bishop" | "bp" => Ok(vec![(1, 1), (1, -1), (-1, 1), (-1, -1)]),
-        "queen" | "q" | "8" => Ok(vec![
+        "orth" => Ok(vec![(1, 0), (-1, 0), (0, 1), (0, -1)]),
+        "diag" => Ok(vec![(1, 1), (1, -1), (-1, 1), (-1, -1)]),
+        "alldir" | "8" => Ok(vec![
             (1, 0),
             (-1, 0),
             (0, 1),

@@ -74,7 +74,7 @@ printf 'A,10;tokyo\nB:20;osaka\n' |
 
 ```text
 r.fs(",").x(2,";").g(1,s(2)).ofs(",");
-g.t().rt("r").m("K","rook","*")
+g.t().rt("r").m("K","orth","*")
 ```
 
 Shorthand forms are also supported for shell-friendly one-liners:
@@ -318,7 +318,7 @@ B 20
 - `rs(sep)` / `ofs(sep)` / `ors(sep)`
 - `t()` / `transpose()`
 - `rt("r"|"l"|"180")` / `rotate(...)`
-- `m(from, ray, put)` marks along a ray (`rook`, `bishop`, `queen`, `8`)
+- `m(from, ray, put)` marks along a ray (`orth`, `diag`, `alldir`, `8`)
 - `m(from, through_re, to, put)` 8-direction pattern mark, useful for reversi-like scans
 
 ### Shorthand syntax
@@ -1553,14 +1553,14 @@ Command:
 
 ```bash
 printf '.....\n..K..\n.....\n' |
-  rkg 'g.m("K","rook","*")'
+  rkg 'g.m("K","orth","*")'
 ```
 
 Shorthand:
 
 ```bash
 printf '.....\n..K..\n.....\n' |
-  rkg 'g.m:K,rook,*'
+  rkg 'g.m:K,orth,*'
 ```
 
 Existing commands:
