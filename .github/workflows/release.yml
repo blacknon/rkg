@@ -5,11 +5,6 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing tag to release, e.g. v0.2.0"
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -19,13 +14,38 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  meta:
+    name: Resolve Release Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read version from Cargo.toml
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)"
+          if [[ -z "$version" ]]; then
+            echo "Failed to read version from Cargo.toml" >&2
+            exit 1
+          fi
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" && "v$version" != "${{ github.ref_name }}" ]]; then
+            echo "Tag ${{ github.ref_name }} does not match Cargo.toml version v$version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
   test:
     name: Test
+    needs: meta
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -34,7 +54,9 @@ jobs:
 
   build:
     name: Build ${{ matrix.name }}
-    needs: test
+    needs:
+      - meta
+      - test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -55,8 +77,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -70,8 +90,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          version="${tag#v}"
+          version="${{ needs.meta.outputs.version }}"
           asset="${BIN_NAME}-${version}-${{ matrix.target }}"
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/${BIN_NAME}" "dist/${BIN_NAME}"
@@ -82,8 +101,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $tag = "${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          $version = $tag.TrimStart('v')
+          $version = "${{ needs.meta.outputs.version }}"
           $asset = "${env:BIN_NAME}-$version-${{ matrix.target }}"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/${env:BIN_NAME}.exe" "dist/${env:BIN_NAME}.exe"
@@ -100,7 +118,9 @@ jobs:
 
   publish:
     name: Publish Release
-    needs: build
+    needs:
+      - meta
+      - build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -117,6 +137,7 @@ jobs:
       - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          tag_name: ${{ needs.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: release-assets/*
           generate_release_notes: true
