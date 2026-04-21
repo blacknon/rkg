@@ -1711,8 +1711,6 @@ fed
 ihg
 ```
 
-</details>
-
 Pad example:
 
 ```bash
@@ -1733,6 +1731,8 @@ Output:
 .ba
 edc
 ```
+
+</details>
 
 #### `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(origin, dir, values..., wrap(mode)?, skip(n)?)`
 
