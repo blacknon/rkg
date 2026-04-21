@@ -7,7 +7,7 @@ rkg
 <strong><code><span style="color: #d73a49;">k</span></code>nit</strong> +
 <strong><code><span style="color: #d73a49;">g</span></code>rid</strong>
 
-`rkg` is a one-liner oriented record/grid processor for text reshaping work.
+One-liner DSL for shell-gei, record processing, and grid-based text transforms.
 
 <br clear="left" />
 
