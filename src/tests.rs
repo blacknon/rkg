@@ -501,6 +501,34 @@ fn align_can_right_align_to_widest_row() {
 }
 
 #[test]
+fn align_can_target_a_single_row() {
+    assert_run(
+        r#"g.align("center",rows(1),pad("."))"#,
+        "a\nbbb\ncc\n",
+        ".a.\nbbb\ncc.\n",
+    );
+}
+
+#[test]
+fn align_can_target_a_row_range_with_shorthand() {
+    assert_run(
+        r#"g.al:r,rows:"1:2",pad:".""#,
+        "a\nbb\nccc\n",
+        "..a\n.bb\nccc\n",
+    );
+}
+
+#[test]
+fn align_rows_out_of_range_is_rejected() {
+    let err = run(r#"g.al:c,rows:4,pad:".""#, "a\nbbb\ncc\n")
+        .expect_err("out-of-range align rows should fail");
+    assert!(
+        err.to_string().contains("rows out of range"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn reverse_can_flip_both_axes() {
     assert_run(r#"g.rev("hv")"#, "abc\ndef\n", "fed\ncba\n");
 }

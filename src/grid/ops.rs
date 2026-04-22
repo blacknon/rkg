@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use std::collections::BTreeSet;
 
 use crate::ast::{Call, Expr, Grid};
 use crate::util::{arg_string, expr_to_string};
@@ -91,34 +92,37 @@ pub(super) fn grid_reverse(mut grid: Grid, call: &Call) -> Result<Grid> {
 }
 
 pub(super) fn grid_align(mut grid: Grid, call: &Call) -> Result<Grid> {
-    if call.args.is_empty() || call.args.len() > 2 {
-        bail!("align expects 1 or 2 args: mode, optional pad(...)");
+    if call.args.is_empty() {
+        bail!("align expects at least 1 arg: mode");
     }
 
     let mode = expr_to_string(&call.args[0])?;
-    let pad = match call.args.get(1) {
-        Some(arg) => parse_optional_pad_call(arg, "align")?,
-        None => " ".to_string(),
-    };
+    let options = parse_align_options(&call.args[1..], grid.cells.len())?;
 
     let width = grid.cells.iter().map(|row| row.len()).max().unwrap_or(0);
-    for row in &mut grid.cells {
+    for (row_idx, row) in grid.cells.iter_mut().enumerate() {
         let missing = width.saturating_sub(row.len());
         if missing == 0 {
             continue;
         }
 
-        let (left, right) = match mode.as_str() {
-            "left" | "l" => (0, missing),
-            "center" | "c" => (missing / 2, missing - (missing / 2)),
-            "right" | "r" => (missing, 0),
-            _ => bail!("align mode must be left, center, right, l, c, or r"),
+        let (left, right) = if options.applies_to(row_idx) {
+            match mode.as_str() {
+                "left" | "l" => (0, missing),
+                "center" | "c" => (missing / 2, missing - (missing / 2)),
+                "right" | "r" => (missing, 0),
+                _ => bail!("align mode must be left, center, right, l, c, or r"),
+            }
+        } else {
+            // Non-target rows still need width-normalizing padding so later grid
+            // operations continue to see a rectangular shape.
+            (0, missing)
         };
 
         let mut out = Vec::with_capacity(width);
-        out.extend(std::iter::repeat_n(pad.clone(), left));
+        out.extend(std::iter::repeat_n(options.pad.clone(), left));
         out.extend(row.iter().cloned());
-        out.extend(std::iter::repeat_n(pad.clone(), right));
+        out.extend(std::iter::repeat_n(options.pad.clone(), right));
         *row = out;
     }
 
@@ -219,6 +223,98 @@ fn parse_nonnegative_usize_expr(expr: &Expr, name: &str) -> Result<usize> {
             .with_context(|| format!("expected non-negative integer arg for {name}")),
         _ => bail!("expected non-negative integer arg for {name}"),
     }
+}
+
+#[derive(Default)]
+struct AlignOptions {
+    pad: String,
+    row_indexes: Option<BTreeSet<usize>>,
+}
+
+impl AlignOptions {
+    fn applies_to(&self, row_idx: usize) -> bool {
+        self.row_indexes
+            .as_ref()
+            .map(|rows| rows.contains(&row_idx))
+            .unwrap_or(true)
+    }
+}
+
+fn parse_align_options(args: &[Expr], row_count: usize) -> Result<AlignOptions> {
+    let mut options = AlignOptions {
+        pad: " ".to_string(),
+        row_indexes: None,
+    };
+
+    for arg in args {
+        match arg {
+            Expr::Call(call) if call.name == "pad" => {
+                if options.pad != " " {
+                    bail!("align pad(...) can only be specified once");
+                }
+                options.pad = parse_optional_pad_call(arg, "align")?;
+            }
+            Expr::Call(call) if call.name == "rows" => {
+                if options.row_indexes.is_some() {
+                    bail!("align rows(...) can only be specified once");
+                }
+                options.row_indexes = Some(parse_align_rows(call, row_count)?);
+            }
+            _ => bail!("align options must be pad(...) or rows(...)"),
+        }
+    }
+
+    Ok(options)
+}
+
+fn parse_align_rows(call: &Call, row_count: usize) -> Result<BTreeSet<usize>> {
+    let (start, end) = match call.args.as_slice() {
+        [row] => parse_row_spec_expr(row)?,
+        [start, end] => (parse_positive_row_expr(start)?, parse_positive_row_expr(end)?),
+        _ => bail!("rows expects 1 or 2 args: row or start,end"),
+    };
+
+    if start > end {
+        bail!("rows range start must be less than or equal to end");
+    }
+    if end > row_count {
+        bail!("rows out of range: grid has {row_count} rows");
+    }
+
+    Ok((start - 1..end).collect())
+}
+
+fn parse_row_spec_expr(expr: &Expr) -> Result<(usize, usize)> {
+    match expr {
+        Expr::Num(_) => {
+            let row = parse_positive_row_expr(expr)?;
+            Ok((row, row))
+        }
+        Expr::Str(s) | Expr::Ident(s) => {
+            if let Some((start, end)) = s.split_once(':') {
+                let start = parse_positive_row_text(start)?;
+                let end = parse_positive_row_text(end)?;
+                Ok((start, end))
+            } else {
+                let row = parse_positive_row_text(s)?;
+                Ok((row, row))
+            }
+        }
+        _ => bail!("rows expects positive 1-based row numbers"),
+    }
+}
+
+fn parse_positive_row_expr(expr: &Expr) -> Result<usize> {
+    match expr {
+        Expr::Num(n) if *n > 0 => Ok(*n as usize),
+        Expr::Str(s) | Expr::Ident(s) => parse_positive_row_text(s),
+        _ => bail!("rows expects positive 1-based row numbers"),
+    }
+}
+
+fn parse_positive_row_text(text: &str) -> Result<usize> {
+    text.parse::<usize>()
+        .with_context(|| "rows expects positive 1-based row numbers".to_string())
 }
 
 fn parse_optional_pad_call(arg: &Expr, opname: &str) -> Result<String> {

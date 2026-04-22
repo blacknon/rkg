@@ -258,6 +258,7 @@ Double quotes create string literals:
 r.fs(",")
 g.rt("r")
 g.m(p("K"),"diag","*")
+g.align("right",rows(2,4),pad("."))
 ```
 
 Current parser behavior:
@@ -339,6 +340,7 @@ r.p:1,2,3.ofs=|
 g.t.rt:r
 r.g:1,sum:2
 g.m:p("K"),"diag","*"
+g.al:r,rows:"2:4",pad:"."
 stdin.r.n:1
 prev.1,5r.ch.ci("X").n(1)
 2r.n:1

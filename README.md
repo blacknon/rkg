@@ -480,7 +480,7 @@ B 20
 - `set(x, y, value)` / `set(p(...), value)` / `set(pt(x, y), value)` overwrites one cell at a 1-based coordinate or picked point
 - `line(origin, dir, values..., wrap(mode)?, skip(n)?)` / `ln(...)` writes values along a direction or fill-mode from a coordinate or picked point
 - `pad(n, value?)` / `pad(top, bottom, left, right, value?)` / `pd(...)` adds outer padding around the whole grid
-- `align(mode, pad(value)?)` / `al(...)` aligns each row to the widest row using `left`, `center`, or `right`
+- `align(mode, pad(value)?, rows(row|start,end)?)` / `al(...)` aligns rows to the widest row using `left`, `center`, or `right`
 - `rev(mode, pad(value)?)` / `rv(...)` reverses the grid horizontally, vertically, or both; `pad(...)` makes ragged rows rectangular first
 - `t(pad(value)?)` / `transpose(pad(value)?)`
 - `rt("r"|"l"|"180", pad(value)?)` / `rotate(...)`
@@ -501,6 +501,7 @@ B 20
 - `g.pd:1,0,2,1,"."` is equivalent to `g.pad(1,0,2,1,".")`
 - `g.rv:h` is equivalent to `g.rev("h")`
 - `g.al:c,pad:"."` is equivalent to `g.align("center",pad("."))`
+- `g.al:r,rows:"2:4",pad:"."` is equivalent to `g.align("right",rows(2,4),pad("."))`
 - `g.rv:h,pad:"."` is equivalent to `g.rev("h",pad("."))`
 - `g.t:pad:"."` is equivalent to `g.t(pad("."))`
 - `g.rt:r,pad:"."` is equivalent to `g.rt("r",pad("."))`
@@ -2013,10 +2014,12 @@ Per-side output:
 
 </details>
 
-#### `align(mode, pad(value)?)` / `al(mode, pad(value)?)`
+#### `align(mode, pad(value)?, rows(row|start,end)?)` / `al(...)`
 
-Aligns each row to the widest row. `mode` may be `left` / `l`, `center` / `c`, or `right` / `r`.
+Aligns rows to the widest row. `mode` may be `left` / `l`, `center` / `c`, or `right` / `r`.
 If `pad(value)` is omitted, spaces are used.
+`rows(...)` is optional and limits alignment to one 1-based row or an inclusive row range.
+When `rows(...)` is used, non-target rows still receive right-side padding so the grid stays width-aligned.
 
 <details>
 <summary>Example</summary>
@@ -2049,6 +2052,21 @@ Output:
 .a.
 bbb
 cc.
+```
+
+Targeted rows:
+
+```bash
+printf 'a\nbb\nccc\n' |
+  rkg 'g.al:r,rows:"1:2",pad:"."'
+```
+
+Output:
+
+```text
+..a
+.bb
+ccc
 ```
 
 </details>
