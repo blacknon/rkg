@@ -7,6 +7,7 @@ readme = "README.md"
 license-file = "LICENSE"
 keywords = ["cli", "text", "record", "grid", "awk"]
 categories = ["command-line-utilities", "text-processing"]
+repository = "https://github.com/blacknon/rkg"
 
 [[bin]]
 name = "rkg"
